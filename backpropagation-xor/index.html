@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backpropagation on XOR — 2–2–1 Network</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div><p class="eyebrow">01204563 Advanced Machine Learning · Topic 6</p><h1>Backpropagation on XOR</h1><p class="lede">Follow the numbers as they move forward, flow backward, and update the parameters.</p></div>
+      <div class="hero-badge"><span>2–2–1</span><small>MLP</small></div>
+    </header>
+    <section class="toolbar" aria-label="Lesson controls">
+      <div class="progress-wrap"><div class="progress-label"><span id="progress-label">Round 1 · 0 / 10 steps</span><span id="progress-percent">0%</span></div><div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div></div>
+      <div class="controls"><button id="reset-btn" class="button button-quiet">Reset</button><button id="next-btn" class="button button-primary">Next step <span aria-hidden="true">→</span></button><button id="round-btn" class="button button-quiet">Reveal round</button></div>
+    </section>
+    <section class="concept-grid">
+      <article class="card network-card"><div class="card-heading"><h2>Network and notation</h2><span id="graph-state-tag" class="tag tag-teal">state 0 / 10</span></div>
+        <svg class="network-svg" viewBox="0 0 760 260" role="img" aria-labelledby="network-title network-desc">
+          <title id="network-title">A two input, two hidden unit, one output neural network</title><desc id="network-desc">Blue arrows carry the forward calculation from x1 and x2 through h1 and h2 to predicted y. Red dashed arrows show the backward error signal.</desc>
+          <defs>
+            <marker id="arrow-forward" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2b67c5"/></marker>
+            <marker id="arrow-backward" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c5504e"/></marker>
+          </defs>
+          <g class="svg-zone-label"><text x="72" y="25">INPUTS</text><text x="318" y="25">HIDDEN LAYER</text><text x="628" y="25">OUTPUT</text></g>
+          <g class="forward-lines">
+            <path id="edge-x1-h1" d="M112 82 L288 82" marker-end="url(#arrow-forward)"/><path id="edge-x2-h2" d="M112 178 L288 178" marker-end="url(#arrow-forward)"/>
+            <path id="edge-x1-h2" d="M112 82 L288 178" marker-end="url(#arrow-forward)"/><path id="edge-x2-h1" d="M112 178 L288 82" marker-end="url(#arrow-forward)"/>
+            <path id="edge-h1-y" d="M368 82 L612 130" marker-end="url(#arrow-forward)"/><path id="edge-h2-y" d="M368 178 L612 130" marker-end="url(#arrow-forward)"/>
+          </g>
+          <g class="backward-lines">
+            <path id="edge-y-h2-back" d="M612 146 L368 194" marker-end="url(#arrow-backward)"/><path id="edge-y-h1-back" d="M612 114 L368 66" marker-end="url(#arrow-backward)"/>
+          </g>
+          <g class="weight-labels"><text x="198" y="69">w₁₁<tspan id="w11-value" x="198" dy="16">0.150</tspan></text><text x="198" y="202">w₂₂<tspan id="w22-value" x="198" dy="16">0.050</tspan></text><text x="197" y="124">w₂₁<tspan id="w21-value" x="197" dy="16">−0.100</tspan></text><text x="197" y="151">w₁₂<tspan id="w12-value" x="197" dy="16">0.200</tspan></text><text x="478" y="91">v₁<tspan id="v1-value" x="478" dy="16">0.300</tspan></text><text x="478" y="190">v₂<tspan id="v2-value" x="478" dy="16">−0.250</tspan></text></g>
+          <g id="node-inputs" class="svg-node input-node"><circle cx="90" cy="82" r="28"/><circle cx="90" cy="178" r="28"/><text x="90" y="76">x₁</text><text id="x1-value" x="90" y="98">0</text><text x="90" y="172">x₂</text><text id="x2-value" x="90" y="194">1</text></g>
+          <g id="node-h1" class="svg-node hidden-node"><circle cx="330" cy="82" r="31"/><text x="330" y="76">h₁</text><text id="h1-value" x="330" y="99">—</text></g><g id="node-h2" class="svg-node hidden-node"><circle cx="330" cy="178" r="31"/><text x="330" y="172">h₂</text><text id="h2-value" x="330" y="195">—</text></g>
+          <g id="node-output" class="svg-node output-node"><circle cx="640" cy="130" r="35"/><text x="640" y="124">ŷ</text><text id="yhat-value" x="640" y="146">—</text></g>
+          <g class="svg-state-values"><text id="z1-value" x="260" y="48">z₁ = —</text><text id="z2-value" x="260" y="226">z₂ = —</text><text id="zo-value" x="520" y="125">zₒ = —</text><text id="deltao-value" x="640" y="190">δₒ = —</text><text id="loss-value" x="640" y="218">E = —</text><text id="delta1-value" x="418" y="65">δ₁ = —</text><text id="delta2-value" x="418" y="213">δ₂ = —</text></g>
+          <g class="bias-labels"><text x="330" y="238">b₁, b₂</text><text x="700" y="137">bₒ</text></g>
+          <g class="svg-caption"><text x="72" y="225">features</text><text x="300" y="55">sigmoid</text><text x="595" y="79">sigmoid</text><text x="502" y="235">solid = forward</text><text x="502" y="251">dashed red = backward</text></g>
+        </svg>
+        <div class="notation"><span><b>y</b> actual target</span><span><b>ŷ</b> predicted y</span><span><b>z</b> pre-activation / linear score</span><span><b>zₒ</b> output logit</span></div>
+      </article>
+      <article class="card setup-card current-computation-card"><div class="card-heading"><div><h2>Current computation</h2><p id="state-step">Step 0 · Press “Next step” to begin</p></div><span id="phase-tag" class="tag tag-amber">Forward pass</span></div><div class="sample-context"><span id="sample-x" class="sample-value">(x₁, x₂) = (0, 1)</span><span class="arrow">→</span><span id="sample-y" class="target-value">actual y = 1</span></div><div class="state-box"><div class="state-kicker">What this step calculates</div><div id="state-equation" class="state-equation">—</div><dl><dt>Values used</dt><dd id="state-values">—</dd><dt>Substitute</dt><dd id="state-calculation">—</dd><dt>Result</dt><dd id="state-result">—</dd></dl><div class="state-meaning"><span>Meaning</span><strong id="state-meaning">—</strong></div></div><div class="formula-box compact-formula"><div><code>sigmoid(t)</code> = 1 / (1 + e<sup>−t</sup>)</div><div><code>E</code> = ½(y − ŷ)<sup>2</sup> · <code>η</code> = 0.5</div></div><p id="coach-note" class="coach-note">Start by calculating the hidden pre-activation z₁.</p></article>
+    </section>
+    <section class="card trace-card"><div class="card-heading trace-heading"><div><h2>Calculation trace</h2><p>Every row repeats the equation, the values used, the calculation, and the result.</p></div><div class="round-tabs" role="tablist" aria-label="Training rounds"><button class="round-tab active" data-round="1" role="tab" aria-selected="true">Round 1</button><button class="round-tab" data-round="2" role="tab" aria-selected="false">Round 2</button></div></div>
+      <div id="round-1" class="round-panel" role="tabpanel"><div class="round-title"><span class="round-number">01</span><div><h3>Sample (0, 1), target 1</h3><p>Forward pass → loss → backward pass → update</p></div><span id="round-1-state" class="round-state">locked</span></div><div class="table-scroll"><table><thead><tr><th>Step</th><th>Equation</th><th>Values used</th><th>Calculation</th><th>Result</th><th>Meaning</th></tr></thead><tbody id="trace-1"></tbody></table></div><div id="update-1" class="update-box hidden"></div></div>
+      <div id="round-2" class="round-panel hidden" role="tabpanel"><div class="round-title"><span class="round-number">02</span><div><h3>Sample (1, 1), target 0</h3><p>Use the parameters produced by Round 1</p></div><span id="round-2-state" class="round-state">locked</span></div><div class="table-scroll"><table><thead><tr><th>Step</th><th>Equation</th><th>Values used</th><th>Calculation</th><th>Result</th><th>Meaning</th></tr></thead><tbody id="trace-2"></tbody></table></div><div id="update-2" class="update-box hidden"></div></div>
+    </section>
+    <section class="bottom-grid"><article class="card params-card"><div class="card-heading"><h2>Parameter snapshots</h2><span class="tag tag-blue">trainable values</span></div><div class="table-scroll"><table class="parameter-table"><thead><tr><th>Parameter</th><th>Initial</th><th>After Round 1</th><th>After Round 2</th></tr></thead><tbody id="parameter-table"></tbody></table></div></article><article class="card takeaway-card"><div class="card-heading"><h2>Takeaway</h2><span class="tag tag-red">not convergence</span></div><div class="flow"><span>forward</span><b>→</b><span>loss</span><b>→</b><span>backward</span><b>→</b><span>update</span></div><p>Two updates demonstrate the mechanism. They do not prove that the network has solved XOR.</p><button id="show-all-btn" class="button button-primary full-button">Show all calculations</button></article></section>
+    <footer><span>Use Next step for a live classroom explanation.</span><span>Original course-native example · sigmoid notation avoids σ / standard-deviation ambiguity.</span></footer>
+  </main>
+  <script src="app.js?v=20260814-5"></script>
+</body>
+</html>
