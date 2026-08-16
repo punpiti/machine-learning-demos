@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10×10 Bitmap Autoencoder</title>
+  <link rel="stylesheet" href="styles10.css?v=20260817-1">
+  <style>.bitmap-tools{display:flex;justify-content:center;gap:6px;margin:10px 0}.bitmap-tools button{padding:6px 10px;border:1px solid #dce4e8;border-radius:7px;background:#fff;color:#17212b;font:inherit;font-size:.75rem;font-weight:800;cursor:pointer}.bitmap-tools button.active{border-color:#2b67c5;background:#2b67c5;color:#fff}.editable .pixel{touch-action:none;user-select:none}.toolbar label{color:#61707d;font-size:.78rem}.toolbar select{margin-left:5px;padding:5px;border:1px solid #dce4e8;border-radius:6px}.toolbar #augmentation-button.active{border-color:#148a88;background:#148a88;color:#fff}.model-row{display:grid;grid-template-columns:minmax(420px,.9fr) minmax(500px,1.1fr);gap:15px;margin-bottom:15px}.compact-network svg{max-height:285px}.feature-list{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px}.feature-list .feature-card{display:block}.feature-list .weight-map{width:150px;margin:8px auto}.feature-list .calculation{font-size:.72rem}.notation{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin:10px 0 0}.notation div{display:grid;grid-template-columns:42px 1fr;padding:5px 7px;border-radius:6px;background:#f5f8f9}.notation dt{font-weight:900;color:#148a88}.notation dd{margin:0;color:#61707d;font-size:.72rem}.augmentation-preview{display:grid;grid-template-columns:auto auto;gap:3px 9px;align-items:center;color:#61707d;font-size:.68rem}.augmentation-preview b{grid-column:1/-1;color:#148a88}.preview-grid{display:grid;grid-template-columns:repeat(10,5px);gap:1px}.preview-pixel{width:5px;height:5px;background:#fff}@media(max-width:1000px){.model-row{grid-template-columns:1fr}.feature-list{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.feature-list{grid-template-columns:1fr}}</style>
+  <style>.class-diagnostic{margin:10px 0;padding:10px;border:1px solid #d8e9e6;border-radius:9px;background:#f3fbfa;text-align:left}.class-diagnostic>span{display:block;color:#61707d;font-size:.68rem;font-weight:800;text-transform:uppercase}.class-diagnostic>strong{display:block;color:#148a88;font-size:1.65rem}.class-diagnostic small{margin-top:6px}.class-rank{display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid #e1eceb;color:#4e626b;font:700 .7rem ui-monospace,monospace}</style>
+  <style>.features{grid-template-columns:repeat(3,minmax(0,1fr))}.closest-class-label{color:#148a88;font-size:1.35rem}.probability-chart{display:grid;grid-template-columns:repeat(10,minmax(18px,1fr));gap:3px;height:105px;align-items:end;margin:8px 0}.probability-column{display:grid;grid-template-rows:1fr auto auto;height:100%;align-items:end;text-align:center}.probability-track{display:flex;align-items:flex-end;height:72px;border-radius:3px;background:#e4efed;overflow:hidden}.probability-bar{width:100%;min-height:1px;background:#45a8a0}.probability-column.winner .probability-bar{background:#d58b16}.probability-value,.probability-label{font:700 .56rem ui-monospace,monospace;color:#61707d}.probability-column.winner .probability-label{color:#a76700}@media(max-width:1050px){.features{grid-template-columns:1fr 1fr}.features .template-card{grid-column:1/-1}}@media(max-width:720px){.features{grid-template-columns:1fr}.features .template-card{grid-column:auto}}</style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">01204563 Advanced Machine Learning · Topic 7</p>
+        <h1>10×10 Bitmap Autoencoder</h1>
+        <p>100 input pixels → small hidden representation → 100 reconstructed pixels</p>
+      </div>
+      <div id="architecture" class="architecture">100–2–100</div>
+    </header>
+
+    <section class="toolbar card">
+      <label>1. Training set <select id="dataset-choice"><option value="digits">Digits 0–9</option><option value="icons">10 Icons</option></select></label>
+      <label>2. Model: 100–<select id="hidden-size" aria-label="Number of hidden nodes"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>–100</label>
+      <button id="augmentation-button" type="button">3. Augmentation OFF</button>
+      <button id="train-button" class="primary">4. Train 100 epochs</button>
+      <button id="reset-button">Reset model</button>
+      <span>Epoch <b id="epoch-value">0</b></span>
+      <span>Training weighted BCE <b id="training-loss">—</b></span>
+      <span id="app-status" class="ready">Interactive controls ready</span>
+    </section>
+
+    <section class="training card">
+      <div>
+        <h2 id="training-set-title">Training set: digits 0–9</h2>
+        <p>One epoch processes all ten 10×10 bitmaps once. <span id="training-mode">Plain mode: input = target.</span></p>
+      </div>
+      <div id="training-gallery" class="gallery"></div>
+      <div id="augmentation-preview" class="augmentation-preview" hidden>
+        <span>augmented input</span><div id="augmentation-bitmap" class="preview-grid"></div><b>→ canonical target</b>
+      </div>
+    </section>
+
+    <section class="model-row">
+      <article class="card network-card compact-network">
+        <h2>Fully connected autoencoder</h2>
+        <svg id="network" viewBox="0 0 720 430" role="img" aria-label="100 input, hidden, 100 output neural network"></svg>
+        <div class="formula encoder">Encoder: hⱼ = sigmoid(zⱼ), where zⱼ = Σᵢwᵢⱼxᵢ + bⱼ</div>
+        <div class="formula decoder">Decoder: x̂ₖ = sigmoid(Σⱼvⱼₖhⱼ + cₖ)</div>
+        <dl class="notation"><div><dt>x</dt><dd>input pixel</dd></div><div><dt>w, v</dt><dd>connection weights</dd></div><div><dt>b, c</dt><dd>biases (adjustable offsets)</dd></div><div><dt>z</dt><dd>weighted sum before activation</dd></div><div><dt>h</dt><dd>hidden value after sigmoid</dd></div><div><dt>x̂</dt><dd>reconstructed output pixel</dd></div></dl>
+      </article>
+      <section id="feature-cards" class="feature-list" aria-label="All hidden feature maps"></section>
+    </section>
+
+    <section class="features">
+      <article class="card bitmap-card">
+        <h2>Input bitmap x</h2>
+        <div class="bitmap-tools" aria-label="Bitmap drawing controls">
+          <button id="draw-mode" class="active" type="button">Draw</button>
+          <button id="erase-mode" type="button">Erase</button>
+          <button id="clear-input" type="button">Clear bitmap</button>
+        </div>
+        <div id="input-bitmap" class="bitmap editable" aria-label="Editable 10 by 10 input bitmap"></div>
+        <p class="hint">Choose Draw or Erase, then drag across cells. Reconstruction updates when you release.</p>
+      </article>
+      <article class="card bitmap-card">
+        <h2>Reconstruction x̂</h2>
+        <div id="output-bitmap" class="bitmap" aria-label="10 by 10 reconstructed bitmap"></div>
+        <p>Input MSE <b id="input-loss">—</b></p>
+        <label>Inspect output pixel <select id="output-pixel"></select></label>
+        <div id="output-equation" class="calculation"></div>
+      </article>
+      <article class="card bitmap-card template-card">
+        <h2>Closest training template: <span id="closest-class" class="closest-class-label">—</span></h2>
+        <div id="closest-bitmap" class="bitmap" aria-label="Closest 10 by 10 training template"></div>
+        <p>Normalized similarity <b id="closest-probability">—</b></p>
+        <div class="class-diagnostic">
+          <span id="similarity-title">Similarity histogram: digits 0–9</span>
+          <div id="class-ranking" class="probability-chart" aria-label="Normalized similarity probability for the selected training templates"></div>
+          <small>Normalized similarity probability—not a calibrated classifier probability. Labels are not used to train the autoencoder.</small>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script src="app10.js?v=20260817-10"></script>
+</body>
+</html>
