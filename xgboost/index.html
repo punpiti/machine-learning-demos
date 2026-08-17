@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive, round-by-round multi-class gradient boosting demo.">
+  <title>XGBoost, one correction at a time</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-2">
+  <link rel="stylesheet" href="styles.css?v=20260817-2">
+</head>
+<body data-index-href="../" data-page-label="XGBoost · residual-by-residual">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Gradient boosted decision trees</p><h1>XGBoost: improve the guess, one round at a time</h1><p class="lede">Each round fits one small tree <strong>per class</strong> on the <strong>residual</strong>—the gap between the true label and the current softmax probability—and adds a gentle correction. Two features and up to three classes, so every round needs one tree per class.</p></div><aside class="formula"><span>Current model</span><strong id="formula">F(x) = 0</strong><small>class score = previous score + η × new tree</small></aside></header>
+
+    <section class="toolbar card" aria-label="Dataset controls">
+      <span class="control-step">Configure the data</span>
+      <label>Class scenario <select id="class-scenario"><option value="two" selected>2 classes: learning</option><option value="three">3 classes: cat / dog / bird</option></select></label>
+    </section>
+
+    <section class="stepper" aria-label="Boosting rounds"><button type="button" class="step active" data-stage="0"><b>0</b><span>Start</span></button><span class="step-line"></span><button type="button" class="step" data-stage="1"><b>1</b><span>Round 1</span></button><span class="step-line"></span><button type="button" class="step" data-stage="2"><b>2</b><span>Round 2</span></button><span class="step-line"></span><button type="button" class="step" data-stage="3"><b>3</b><span>Round 3</span></button></section>
+    <section class="main-grid">
+      <article class="card chart-card"><div class="card-heading"><div><h2>Training data and decision surface</h2><p id="chart-caption">Start with equal scores for every class.</p></div><span id="feature-class-count" class="tag tag-teal">2 features · 2 classes</span></div><svg id="chart" class="chart" viewBox="0 0 470 360" role="img" aria-label="Two-dimensional training data and the ensemble's decision surface"></svg><p id="training-description" class="test-hint">Weekly practice time and quiz score. Click a point to inspect its class scores; click empty space to test a new point.</p><div id="chart-legend" class="legend"></div></article>
+      <aside class="card story-card"><p class="overline" id="stage-kicker">Round 0 · baseline</p><h2 id="stage-title">Everyone starts with the same guess</h2><p id="stage-copy">Before any tree, every class scores 0, so the softmax prediction is a flat tie between classes.</p><div class="metric-row"><div><span>Accuracy</span><strong id="accuracy">—</strong></div><div><span>Avg. log loss</span><strong id="logloss">—</strong></div></div><div class="residual-box"><div class="residual-head"><strong id="residual-title">Class scores for this point</strong><span id="residual-note">probability now · residual the next round will fit</span></div><p id="selected-description" class="score-selected">Selected example</p><span id="prediction-tag" class="tag tag-amber">—</span><div id="residual-list" class="score-list"></div></div><div class="controls"><button id="previous" type="button" class="secondary">← Previous</button><button id="next" type="button">Add Round 1 →</button></div></aside>
+    </section>
+    <section class="tree-section"><div class="section-heading"><div><p class="eyebrow">One tree per class, this round</p><h2>What did this round actually add?</h2></div><p>Each leaf contributes a small adjustment to that class's score, scaled by η = 0.50. The note under each tree says whether the split moved or just its values changed.</p></div><div id="tree-cards"></div></section>
+    <section class="note"><strong>This is the core boosting idea.</strong> Real XGBoost also uses second-order gradients, regularization, row/column sampling, and other safeguards. Here each round's trees are grown greedily from the visible data so the sequence stays easy to follow.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-2"></script>
+</body>
+</html>
