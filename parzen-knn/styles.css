@@ -73,8 +73,14 @@
 .loo-best-dot{fill:none;stroke:var(--amber);stroke-width:2.4}
 .loo-rule-marker{fill:#8a5cc7;stroke:#fff;stroke-width:1.4}
 .axis-label.loo-y{font-size:10px}
-.rule-note{margin:10px 0 0;color:var(--muted);font-size:.76rem;font-weight:650}
+.axis-label.loo-y-title{font-size:9px}
 .hist-likelihood{fill:none;stroke-width:1.8;opacity:.95}
+.loo-legend{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:10px;color:var(--ink);font-size:.76rem;font-weight:700}
+.loo-legend b{font-weight:900}
+.legend-swatch{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:middle}
+.swatch-current{border-radius:50%;background:#2b67c5}
+.swatch-best{border-radius:50%;background:#fff;border:2px solid var(--amber);box-sizing:border-box}
+.swatch-rule{background:#8a5cc7;transform:rotate(45deg)}
 
 .note{margin-top:18px;padding:15px 18px;border-left:4px solid var(--amber);border-radius:8px;background:#fff7e8;color:#66532d;font-size:.84rem}
 

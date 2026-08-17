@@ -390,11 +390,18 @@
       ? [H_MIN, 0.25, 0.5, 0.75, H_MAX].map(v => `<text class="axis-label" x="${px(v)}" y="${bottom + 16}" text-anchor="middle">${v.toFixed(2)}</text>`).join("")
       : looCurve.filter((_, i) => i % 2 === 0).map(p => `<text class="axis-label" x="${px(p.param)}" y="${bottom + 16}" text-anchor="middle">${p.param}</text>`).join("");
 
-    svg.innerHTML = `${gridLines}<path d="${area}" class="loo-area"/><path d="${path}" class="loo-line"/>${bestMarker}${ruleMarker}${currentMarker}${xTicks}<text class="axis-label" x="${(left + right) / 2}" y="${bottom + 32}" text-anchor="middle">${mode === "parzen" ? "window width h (normalized)" : "k (neighbors)"}</text>`;
+    const yAxisTitle = `<text class="axis-label loo-y-title" x="10" y="${(top + bottom) / 2}" text-anchor="middle" transform="rotate(-90 10 ${(top + bottom) / 2})">leave-one-out accuracy</text>`;
 
-    $("#rule-of-thumb-note").textContent = mode === "parzen"
-      ? `Scott's rule (3.49·σ·n⁻¹ᐟ³, a classical bin-width heuristic) suggests h ≈ ${rule.toFixed(2)} — the diamond marker.`
-      : `The √n rule of thumb (a common k-NN heuristic) suggests k ≈ ${rule} — the diamond marker.`;
+    svg.innerHTML = `${gridLines}<path d="${area}" class="loo-area"/><path d="${path}" class="loo-line"/>${bestMarker}${ruleMarker}${currentMarker}${xTicks}${yAxisTitle}<text class="axis-label" x="${(left + right) / 2}" y="${bottom + 32}" text-anchor="middle">${mode === "parzen" ? "window width h (normalized)" : "k (neighbors)"}</text>`;
+
+    const paramLabel = mode === "parzen" ? "h" : "k";
+    const paramFmt = v => mode === "parzen" ? v.toFixed(2) : v;
+    const ruleName = mode === "parzen" ? "Scott's rule" : "√n rule";
+    $("#loo-legend").innerHTML = `
+      <span><i class="legend-swatch swatch-current"></i>Current (${paramLabel}=${paramFmt(currentParam)}): <b>${(currentAcc * 100).toFixed(0)}%</b></span>
+      <span><i class="legend-swatch swatch-best"></i>Best (${paramLabel}=${paramFmt(best)}): <b>${(looAccuracyAt(best) * 100).toFixed(0)}%</b></span>
+      <span><i class="legend-swatch swatch-rule"></i>${ruleName} (${paramLabel}=${paramFmt(rule)}): <b>${(looAccuracyAt(rule) * 100).toFixed(0)}%</b></span>
+    `;
   }
 
   function updateControls() {
