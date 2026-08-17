@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive Parzen window and k-nearest neighbor demo about choosing the window.">
+  <title>Parzen Windows &amp; k-NN: choosing the window</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-1">
+  <link rel="stylesheet" href="styles.css?v=20260817-1">
+</head>
+<body data-index-href="../" data-page-label="Parzen Windows &amp; k-NN">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Non-parametric density estimation</p><h1>Parzen windows &amp; k-NN: two ways to pick a window</h1><p class="lede">Both methods estimate a class from the same idea: <strong>p̂(x) ≈ k / (n·V)</strong>. A Parzen window fixes the window's <strong>volume V</strong> and counts how many points <strong>k</strong> land inside. k-NN fixes <strong>k</strong> and grows the window until it holds exactly that many.</p></div><aside class="formula"><span>p̂(x) ≈ k / (n·V)</span><strong id="formula-fixed">V fixed (window width h)</strong><small id="formula-free">k counted inside</small></aside></header>
+
+    <section class="toolbar card" aria-label="Controls">
+      <span class="control-step">Configure</span>
+      <label>Class scenario <select id="class-scenario"><option value="two" selected>2 classes: learning</option><option value="three">3 classes: cat / dog / bird</option></select></label>
+      <div class="mode-picker" role="group" aria-label="Method"><button class="mode-button active" data-mode="parzen" type="button">Parzen Window</button><button class="mode-button" data-mode="knn" type="button">k-Nearest Neighbor</button></div>
+      <div id="param-row-parzen" class="param-row"><label for="h-slider">Window width h</label><input id="h-slider" type="range" min="0.02" max="0.9" step="0.01"><span id="h-value" class="param-value"></span></div>
+      <div id="param-row-knn" class="param-row" hidden><label for="k-slider">Neighbors k</label><input id="k-slider" type="range" min="1" max="15" step="1"><span id="k-value" class="param-value"></span></div>
+      <button id="use-best" type="button" class="button-secondary">Use best (LOO) →</button>
+    </section>
+
+    <section class="main-grid">
+      <article class="card chart-card"><div class="card-heading"><div><h2>Training data and decision surface</h2><p>Click a point to inspect its window (leave-one-out); click empty space to test a new point.</p></div><span id="feature-class-count" class="tag tag-teal">2 features · 2 classes</span></div><svg id="chart" class="chart" viewBox="0 0 470 360" role="img" aria-label="Two-dimensional training data, the classifier's decision surface, and the current window"></svg><p id="training-description" class="test-hint">Weekly practice time and quiz score.</p><div id="chart-legend" class="legend"></div></article>
+      <aside class="card story-card"><p class="overline">Selected point</p><h2>What decides its class?</h2><p id="selected-description">Selected example</p><span id="prediction-tag" class="tag tag-amber">—</span><p id="window-summary" class="window-summary"></p><div id="score-list" class="score-list"></div><div class="loo-inline"><span>Leave-one-out accuracy at this setting</span><strong id="loo-current">—</strong></div></aside>
+    </section>
+
+    <section class="tree-section"><div class="section-heading"><div><p class="eyebrow">Choosing the window</p><h2>Leave-one-out accuracy across the window range</h2></div><p>Too small a window overfits to single points (high variance); too large a window blurs classes together (high bias). The dot marks the current setting, the ring marks the best.</p></div><svg id="loo-chart" class="loo-chart" viewBox="0 0 640 150" role="img" aria-label="Leave-one-out accuracy curve across the window range"></svg></section>
+
+    <section class="note"><strong>Two views of the same idea.</strong> Both methods classify by the majority label among the points inside a local window; the window is drawn as an ellipse because the two features are normalized to a comparable 0–1 scale before distance is computed. Real implementations often use smoother kernels (Gaussian, Epanechnikov) instead of a hard-edged window, and weight neighbors by distance.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-1"></script>
+</body>
+</html>
