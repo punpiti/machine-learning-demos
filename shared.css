@@ -1,0 +1,55 @@
+:root{
+  --ink:#17212b;
+  --muted:#61707d;
+  --line:#dfe6ea;
+  --paper:#f7f5ef;
+  --card:#fff;
+  --blue:#2b67c5;
+  --teal:#148a88;
+  --amber:#d58b16;
+  --red:#c5504e;
+  --shadow:0 14px 35px rgba(30,48,62,.08);
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  line-height:1.4;
+}
+
+button,input,select,textarea{font:inherit}
+
+.site-header,.site-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  color:var(--muted);
+  font-size:.76rem;
+}
+
+.site-header{
+  margin-bottom:22px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+}
+
+.site-footer{
+  margin-top:24px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+
+.site-home-link{color:var(--blue);font-weight:800;text-decoration:none}
+.site-home-link:hover{text-decoration:underline}
+.site-page-label{font-weight:700;text-align:right}
+
+@media(max-width:720px){
+  body{overflow-x:hidden}
+  .site-header,.site-footer{align-items:flex-start;flex-direction:column}
+  .site-page-label{text-align:left}
+}

@@ -8,5 +8,6 @@ Static GitHub Pages site for course-native interactive machine-learning demonstr
 - `backpropagation-xor/` — classroom version: fixed 2–2–1 network with sigmoid activation
 - `backpropagation-xor-explorer/` — experimental configurable version
 - `autoencoder/` — 10×10 bitmap autoencoder with selectable datasets, hidden width, augmentation, feature maps, and reconstruction diagnostics
+- `random-forest/` — random-forest voting lab showing bootstrap samples, random feature splits, and majority voting
 
 To publish with GitHub Pages, put this directory in a repository named `machine-learning-demos`, then enable Pages from the repository's default branch and root directory.

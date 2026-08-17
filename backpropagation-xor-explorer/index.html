@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Backpropagation on XOR — 2–2–1 Network</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-1">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-index-href="../" data-page-label="Backpropagation Explorer">
   <main class="app-shell">
+    <div data-shared-header></div>
     <header class="hero">
       <div><p class="eyebrow">01204563 Advanced Machine Learning · Topic 6</p><h1>Backpropagation on XOR</h1><p class="lede">Follow the numbers as they move forward, flow backward, and update the parameters.</p></div>
       <div class="hero-badge"><span>2–2–1</span><small>MLP</small></div>
@@ -52,8 +54,9 @@
       <div id="round-2" class="round-panel hidden" role="tabpanel"><div class="round-title"><span class="round-number">02</span><div><h3>Sample (1, 1), target 0</h3><p>Use the parameters produced by Round 1</p></div><span id="round-2-state" class="round-state">locked</span></div><div class="table-scroll"><table><thead><tr><th>Step</th><th>Equation</th><th>Values used</th><th>Calculation</th><th>Result</th><th>Meaning</th></tr></thead><tbody id="trace-2"></tbody></table></div><div id="update-2" class="update-box hidden"></div></div>
     </section>
     <section class="bottom-grid"><article class="card params-card"><div class="card-heading"><h2>Parameter snapshots</h2><span class="tag tag-blue">trainable values</span></div><div class="table-scroll"><table class="parameter-table"><thead><tr><th>Parameter</th><th>Initial</th><th>After Round 1</th><th>After Round 2</th></tr></thead><tbody id="parameter-table"></tbody></table></div></article><article class="card takeaway-card"><div class="card-heading"><h2>Takeaway</h2><span class="tag tag-red">not convergence</span></div><div class="flow"><span>forward</span><b>→</b><span>loss</span><b>→</b><span>backward</span><b>→</b><span>update</span></div><p>Two updates demonstrate the mechanism. They do not prove that the network has solved XOR.</p><button id="show-all-btn" class="button button-primary full-button">Show all calculations</button></article></section>
-    <footer><span>Use Next step for a live classroom explanation.</span><span>Original course-native example · sigmoid notation avoids σ / standard-deviation ambiguity.</span></footer>
+    <footer data-shared-footer></footer>
   </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
   <script src="app.js?v=20260814-6"></script>
 </body>
 </html>

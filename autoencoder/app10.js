@@ -188,9 +188,9 @@ function signedColor(value, scale) {
   return value >= 0 ? `rgb(255,${pale},${pale})` : `rgb(${pale},${pale},255)`;
 }
 
-function renderBitmap(host, values, editable = false, signed = false) {
+function renderBitmap(host, values, editable = false, signed = false, signedScale = null) {
   host.innerHTML = "";
-  const scale = Math.max(0.001, ...values.map(Math.abs));
+  const scale = signedScale ?? Math.max(0.001, ...values.map(Math.abs));
   values.forEach((value, index) => {
     const pixel = document.createElement("button");
     pixel.type = "button";
@@ -289,11 +289,14 @@ function renderNetwork(state) {
 function renderFeatureCards(state) {
   const host = $("#feature-cards");
   host.innerHTML = "";
+  const featureScale = Math.max(0.001, ...encoderWeights.flat().map(Math.abs));
+  $("#feature-scale-min").textContent = `−${featureScale.toFixed(3)}`;
+  $("#feature-scale-max").textContent = `+${featureScale.toFixed(3)}`;
   for (let hidden = 0; hidden < hiddenSize; hidden++) {
     const card = document.createElement("article");
     card.className = "card feature-card";
     card.innerHTML = `<h2>Hidden feature h${hidden + 1}</h2><div class="bitmap weight-map"></div><div class="calculation">z${hidden + 1} = x·w${hidden + 1} + b${hidden + 1} = ${state.hiddenPre[hidden].toFixed(3)}<br>h${hidden + 1} = sigmoid(z${hidden + 1}) = ${state.hidden[hidden].toFixed(3)}</div>`;
-    renderBitmap(card.querySelector(".weight-map"), encoderWeights.map(row => row[hidden]), false, true);
+    renderBitmap(card.querySelector(".weight-map"), encoderWeights.map(row => row[hidden]), false, true, featureScale);
     host.append(card);
   }
 }

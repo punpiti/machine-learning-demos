@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Random Forest Voting Lab</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-1">
+  <link rel="stylesheet" href="styles.css?v=20260817-11">
+</head>
+<body data-index-href="../" data-page-label="Random Forest Voting Lab">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="hero">
+      <div><p class="eyebrow">01204563 Advanced Machine Learning · Topic 8</p><h1>Random Forest Voting Lab</h1><p class="lede">Many slightly different decision trees make one more stable classification together.</p></div>
+      <div class="hero-badge"><span>RF</span><small>vote</small></div>
+    </header>
+
+    <section class="toolbar card" aria-label="Forest controls">
+      <span class="control-step">1. Configure the data and trees</span>
+      <label>Class scenario <select id="class-scenario"><option value="two" selected>2 classes: learning</option><option value="three">3 classes: cat / dog / bird</option></select></label>
+      <label>Number of trees <select id="tree-count"><option value="3">3</option><option value="5" selected>5</option><option value="9">9</option></select></label>
+      <label>Maximum depth <select id="max-depth"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
+    </section>
+
+    <section class="model-chooser card" aria-label="Model selection">
+      <span class="control-step">2. Choose a model to grow</span>
+      <div class="mode-picker" role="group" aria-label="Comparison mode"><button class="mode-button" data-mode="tree" type="button">Single Tree</button><button class="mode-button" data-mode="bagging" type="button">Bagging</button><button class="mode-button active" data-mode="forest" type="button">Random Forest</button></div>
+      <button id="regenerate" class="button button-primary" type="button">Regrow current model</button>
+      <span id="forest-status" class="status">5 trees · 1 random feature per split</span>
+      <div id="model-difference" class="model-difference" aria-live="polite"></div>
+    </section>
+
+    <section class="forest-section">
+      <div class="section-heading"><div><h2>Inside this forest</h2><p>Tinted regions show each leaf’s predicted class; green/red highlight whether that tree predicts the selected point correctly.</p></div><div class="forest-meta"><span id="forest-version" class="forest-version">Forest 1</span><span id="agreement" class="agreement"></span></div></div>
+      <div id="tree-cards" class="tree-cards"></div>
+    </section>
+
+    <section class="lesson-grid">
+      <article class="card data-card">
+        <div class="card-heading"><div><h2>Training data</h2><p id="training-description">Weekly practice time and quiz score. Click a point to inspect the forest’s vote.</p><p class="test-hint">Click empty plot space to add a ◇ test data point; its colour shows the predicted class.</p></div><span id="feature-class-count" class="tag tag-teal">2 features · 2 classes</span></div>
+        <svg id="scatterplot" viewBox="0 0 470 360" role="img" aria-label="Two-dimensional training data"></svg>
+        <div id="class-legend" class="legend"></div>
+      </article>
+
+      <article class="card vote-card">
+        <div class="card-heading"><div><h2>Majority vote</h2><p id="selected-description">Selected example</p></div><span id="prediction-tag" class="tag tag-amber">—</span></div>
+        <div id="vote-result" class="vote-result"></div>
+        <div id="vote-bars" class="vote-bars" aria-label="Votes by class"></div>
+        <div class="explain"><b id="mechanism-title">Why do the trees differ?</b><span id="mechanism-note">Each tree sees a bootstrap sample of rows and randomly chooses one candidate feature at every split.</span></div>
+      </article>
+    </section>
+
+    <section class="takeaway card">
+      <div><h2 id="takeaway-title">Read the mechanism</h2><p id="takeaway-copy"><b>Bootstrap rows</b> make the trees different. <b>Random feature choices</b> reduce the chance that every tree repeats the same split. Voting then averages out some of an individual tree’s instability.</p></div>
+      <p class="note">This small teaching dataset uses only two features. A production random forest usually has many more rows, features, and trees.</p>
+    </section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-15"></script>
+</body>
+</html>
