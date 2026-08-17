@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive convolution demo: slide a 3x3 filter over a rain-radar grid by hand before the word 'convolution' ever comes up, then compare a hand-designed edge filter against one trained with plain gradient descent.">
+  <title>Convolution: Fixed vs. Learned Filters</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-7">
+  <link rel="stylesheet" href="styles.css?v=20260818-1">
+</head>
+<body data-index-href="../" data-page-label="Convolution Filters">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Chapter 8 · Deep Learning</p><h1>Slide, multiply, sum — before we call it "convolution"</h1><p class="lede">A small rain-radar grid — two storm cells plus background noise. A 3×3 filter sits over part of it, multiplies matching cells, and sums the result into one number. That's the whole mechanic. Everything below — feature maps, learned filters, channels — is built from this one operation repeated.</p></div><aside class="formula"><span>The operation, every position</span><strong>response = Σ (patch × filter) + b</strong><small>train the filter's numbers later with the exact same rule as Chapter 5: w ← w + η(y−a)x</small></aside></header>
+
+    <section class="card manual-card" aria-label="Manual filter sliding">
+      <div class="card-heading"><div><h2>1. Slide the filter yourself</h2><p>Click any highlighted cell to move the filter there, or use the arrows. Guess the response before you reveal it.</p></div>
+        <div class="mode-picker" role="group" aria-label="Filter preset">
+          <button type="button" class="manual-preset active" data-preset="edge">Edge detector (Sobel)</button>
+          <button type="button" class="manual-preset" data-preset="blur">Blur / average</button>
+        </div>
+      </div>
+      <div class="manual-row">
+        <div class="manual-grid-wrap">
+          <div id="manual-grid" class="grid-host"></div>
+          <div class="manual-nav">
+            <button id="manual-up" type="button" class="secondary" aria-label="Move up">↑</button>
+            <div><button id="manual-left" type="button" class="secondary" aria-label="Move left">←</button><button id="manual-right" type="button" class="secondary" aria-label="Move right">→</button></div>
+            <button id="manual-down" type="button" class="secondary" aria-label="Move down">↓</button>
+          </div>
+          <p id="manual-position" class="manual-position">—</p>
+        </div>
+        <div class="manual-compute">
+          <div class="mini-grids">
+            <div><span>Patch (radar values)</span><div id="manual-patch" class="grid-host mini"></div></div>
+            <div><span>Filter weights</span><div id="manual-weights" class="grid-host mini"></div></div>
+            <div><span>Products</span><div id="manual-products" class="grid-host mini"></div></div>
+          </div>
+          <div class="guess-row">
+            <label for="manual-guess">Your guess for the response</label>
+            <input id="manual-guess" type="number" step="0.1" placeholder="e.g. 1.2">
+            <button id="manual-reveal" type="button">Reveal</button>
+          </div>
+          <div class="reveal-box"><span>Response = sum of products</span><strong id="manual-sum">?</strong></div>
+          <p id="manual-feedback" class="manual-feedback">Type a guess (optional), then press Reveal.</p>
+          <p id="manual-tally" class="manual-tally">No guesses yet</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar card" aria-label="Configure the sweep">
+      <span class="control-step">2. Configure</span>
+      <button id="stride-toggle" type="button" class="secondary">Stride: <b>1</b></button>
+      <label class="checkbox-label"><input id="pooling-toggle" type="checkbox"> 2×2 max-pool the feature maps</label>
+      <span id="stride-readout" class="stride-readout">—</span>
+    </section>
+
+    <section class="main-grid">
+      <article class="card">
+        <div class="card-heading"><div><h2>Fixed filter</h2><p>The Sobel edge detector — hand-designed, never trained. Finds boundaries.</p></div></div>
+        <div class="filter-pair"><div><span>Weights</span><div id="fixed-weights" class="grid-host mini"></div></div><div class="feature-map-wrap"><span>Feature map</span><div id="fixed-feature-map" class="grid-host"></div></div></div>
+      </article>
+      <article class="card">
+        <div class="card-heading"><div><h2>Learned filter</h2><p>Starts at zero. Trained with the same update rule as Chapter 5 to spot storm-cell cores.</p></div></div>
+        <div class="filter-pair"><div><span>Weights</span><div id="learned-weights" class="grid-host mini"></div></div><div class="feature-map-wrap"><span>Feature map</span><div id="learned-feature-map" class="grid-host"></div></div></div>
+        <div class="learned-controls">
+          <div class="param-row"><label for="lr-slider">Learning rate η</label><input id="lr-slider" type="range" min="0.05" max="1" step="0.05" value="0.4"><span id="lr-value" class="param-value">0.40</span></div>
+          <div class="controls">
+            <button id="learned-reset" type="button" class="secondary">Reset</button>
+            <span class="epoch-run-group"><label for="learned-epoch-count">Run</label><input id="learned-epoch-count" type="number" min="1" max="120" value="10"><button id="learned-run" type="button" class="secondary">epochs →</button></span>
+            <button id="speed-toggle" type="button" class="secondary" title="Auto-train speed">1×</button>
+            <button id="play-pause" type="button" class="secondary">▶ Auto-train</button>
+            <button id="learned-next" type="button">Next update →</button>
+          </div>
+          <p id="learned-status" class="learned-status">—</p>
+          <p id="last-sample" class="last-sample">No updates yet</p>
+          <div class="accuracy-block">
+            <svg id="accuracy-chart" viewBox="0 0 300 155" class="accuracy-chart" role="img" aria-label="Training accuracy of the learned filter versus epoch"></svg>
+            <span>Train accuracy: <b id="learned-accuracy">—</b></span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="note"><strong>Same rule, more numbers.</strong> The learned filter's 9 weights update with <code>w ← w + η(y−a)x</code> — identical in shape to <a href="../sgd-vs-lda/">SGD vs. LDA</a>'s 2-weight update, just with a 9-number patch instead of 2 features. Its training task: is this 3×3 patch centered near a storm cell's core? The fixed Sobel filter never sees a label at all — its numbers were picked by hand to respond to left-right contrast, so its feature map lights up at storm-cell <em>edges</em>. The learned filter, chasing a "core" label, tends to light up at storm-cell <em>centers</em> instead — two different filters, two different jobs, from the same slide-multiply-sum mechanic. A real CNN stacks many such filters (channels) across many layers; this lab stops at one filter, one layer, entirely in the browser — no framework, no GPU.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260818-1"></script>
+</body>
+</html>
