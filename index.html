@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Machine Learning Demos</title>
-  <link rel="stylesheet" href="shared.css?v=20260817-4">
+  <link rel="stylesheet" href="shared.css?v=20260817-5">
   <style>
     .shell{max-width:1080px;margin:auto;padding:64px 28px}.eyebrow{margin:0 0 9px;color:var(--blue);font-size:.75rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.hero{display:flex;justify-content:space-between;gap:30px;align-items:flex-end;margin-bottom:42px}.hero h1{margin:0;font-size:clamp(2.5rem,7vw,5.2rem);line-height:.98;letter-spacing:-.06em}.hero p{max-width:620px;margin:18px 0 0;color:var(--muted);font-size:1.08rem}.badge{display:grid;place-items:center;width:112px;height:112px;border:1px solid #b9d4ee;border-radius:30px;background:#eaf3ff;color:var(--blue);font-weight:900;text-align:center;box-shadow:var(--shadow)}.badge small{display:block;letter-spacing:.1em;text-transform:uppercase}.section-title{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:18px}.section-title h2{margin:0;font-size:1.1rem}.section-title span{color:var(--muted);font-size:.78rem}.topic-block{margin-bottom:32px}.topic-block:last-child{margin-bottom:0}.topic-title{margin:0 0 14px;color:var(--blue);font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.topic-block-other{padding-top:20px;border-top:1px solid var(--line)}.topic-block-other .topic-title{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:23px;box-shadow:var(--shadow)}.card h3{margin:0;font-size:1.08rem}.card p{margin:8px 0;color:var(--muted);font-size:.9rem}.meta{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 20px}.tag{padding:4px 9px;border-radius:999px;background:#e3f5f3;color:#137674;font-size:.7rem;font-weight:900}.tag.blue{background:#e8f0ff;color:#285da9}.links{display:flex;gap:9px;margin-top:auto;flex-wrap:wrap}.button{display:inline-block;padding:9px 13px;border-radius:9px;background:var(--blue);color:#fff;text-decoration:none;font-size:.8rem;font-weight:850}.button.secondary{background:#f1f4f5;color:var(--ink)}footer{margin-top:42px;color:var(--muted);font-size:.78rem}@media(max-width:680px){.shell{padding:35px 18px}.hero{align-items:flex-start}.badge{width:76px;height:76px;border-radius:20px;font-size:.8rem}.grid{grid-template-columns:1fr}}@media(min-width:1700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
   </style>
@@ -13,19 +13,25 @@
   <main class="shell">
     <div data-shared-header></div>
     <header class="hero"><div><p class="eyebrow">01204563 Advanced Machine Learning</p><h1>Machine<br>Learning Demos</h1><p>Small interactive demonstrations for explaining machine-learning concepts in class. More demos will be added here over time.</p></div><div class="badge">ML<br><small>demos</small></div></header>
-    <section><div class="section-title"><h2>Available demos</h2><span>Grouped by week, in teaching order</span></div>
+    <section><div class="section-title"><h2>Available demos</h2><span>Grouped by session, following the 01219362 (3-credit) syllabus</span></div>
 
       <div class="topic-block">
-        <p class="topic-title">Week 1 &middot; Introduction, Bayes, and Classifiers</p>
+        <p class="topic-title">Session 2 &middot; Regression + Metrics + Bayes</p>
         <div class="grid">
-          <article class="card"><h3>Will It Rain? (Bayes' Theorem)</h3><p>Reveal evidence one piece at a time — season, time of day, cloud cover — and watch prior × likelihood combine into a posterior, live.</p><div class="meta"><span class="tag">bayes' theorem</span><span class="tag blue">prior / posterior</span></div><div class="links"><a class="button" href="bayes-rain-demo/">Open demo</a></div></article>
-          <article class="card"><h3>Salmon or Seabass? (Bayes vs. Logistic)</h3><p>Sample from a real population and classify it with naive Bayes and logistic regression, then compare each fitted boundary against the true population boundary.</p><div class="meta"><span class="tag">bayes classification</span><span class="tag blue">logistic regression</span></div><div class="links"><a class="button" href="bayes-fish-demo/">Open demo</a></div></article>
           <article class="card"><h3>Pens in a Box (Confusion Matrix)</h3><p>Build a small dataset, choose a query, then click what's actually true and watch TP/FP/TN/FN, recall, and precision compute live.</p><div class="meta"><span class="tag">classification metrics</span><span class="tag blue">precision / recall</span></div><div class="links"><a class="button" href="pens-confusion-matrix-demo/">Open demo</a></div></article>
+          <article class="card"><h3>Will It Rain? (Bayes' Theorem)</h3><p>Reveal evidence one piece at a time — season, time of day, cloud cover — and watch prior × likelihood combine into a posterior, live.</p><div class="meta"><span class="tag">bayes' theorem</span><span class="tag blue">prior / posterior</span></div><div class="links"><a class="button" href="bayes-rain-demo/">Open demo</a></div></article>
         </div>
       </div>
 
       <div class="topic-block">
-        <p class="topic-title">Week 2 &middot; Neural Networks</p>
+        <p class="topic-title">Session 4 &middot; Bayesian Decision Theory and Maximum Likelihood</p>
+        <div class="grid">
+          <article class="card"><h3>Salmon or Seabass? (Bayes vs. Logistic)</h3><p>Sample from a real population and classify it with naive Bayes and logistic regression, then compare each fitted boundary against the true population boundary.</p><div class="meta"><span class="tag">bayes classification</span><span class="tag blue">logistic regression</span></div><div class="links"><a class="button" href="bayes-fish-demo/">Open demo</a></div></article>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <p class="topic-title">Sessions 6&ndash;7 &middot; Neural Networks</p>
         <div class="grid">
           <article class="card"><h3>Backpropagation on XOR</h3><p>A step-by-step 2–2–1 MLP demonstration. Follow the numbers through the forward pass, loss, backward pass, and parameter update.</p><div class="meta"><span class="tag">neural networks</span><span class="tag blue">recommended for class</span><span class="tag">10 steps / round</span></div><div class="links"><a class="button" href="backpropagation-xor/">Open demo</a><a class="button secondary" href="backpropagation-xor/backprop-xor-handout-en.pdf">Download PDF</a></div></article>
           <article class="card"><h3>Backpropagation Explorer</h3><p>Experimental version with 1–3 hidden units and selectable activation functions: sigmoid, tanh, arctan, ReLU, and linear.</p><div class="meta"><span class="tag">exploration</span><span class="tag blue">configurable</span></div><div class="links"><a class="button" href="backpropagation-xor-explorer/">Open explorer</a></div></article>
@@ -33,23 +39,29 @@
       </div>
 
       <div class="topic-block">
-        <p class="topic-title">Week 3 &middot; Deep Learning</p>
+        <p class="topic-title">Sessions 8 &amp; 10 &middot; Deep Learning</p>
         <div class="grid">
           <article class="card"><h3>10×10 Bitmap Autoencoder</h3><p>Train a 100–h–100 autoencoder on digits or bitmap icons, inspect every hidden feature, draw a test input, and compare its reconstruction with the closest training template.</p><div class="meta"><span class="tag">autoencoder</span><span class="tag blue">interactive bitmap</span><span class="tag">augmentation</span></div><div class="links"><a class="button" href="autoencoder/">Open demo</a></div></article>
         </div>
       </div>
 
       <div class="topic-block">
-        <p class="topic-title">Week 4 &middot; Non-Parametric &amp; Tree-Based Methods</p>
+        <p class="topic-title">Session 13 &middot; Non-Parametric Learning (Parzen Windows + kNN)</p>
         <div class="grid">
           <article class="card"><h3>Parzen Windows &amp; k-NN</h3><p>Compare two ways to pick a local window for classification, and use a leave-one-out accuracy curve to see why the window size matters.</p><div class="meta"><span class="tag">non-parametric</span><span class="tag blue">window selection</span><span class="tag">leave-one-out</span></div><div class="links"><a class="button" href="parzen-knn/">Open demo</a></div></article>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <p class="topic-title">Session 15 &middot; Ensemble Methods (Random Forest and Ada Boost)</p>
+        <div class="grid">
           <article class="card"><h3>Random Forest Voting Lab</h3><p>Grow a small random forest, inspect bootstrap samples and random feature splits, then see how individual decision trees vote together.</p><div class="meta"><span class="tag">decision trees</span><span class="tag blue">ensemble learning</span><span class="tag">majority vote</span></div><div class="links"><a class="button" href="random-forest/">Open demo</a></div></article>
           <article class="card"><h3>XGBoost: Residuals Lab</h3><p>Build a small multi-class gradient-boosted model round by round, watching one tree per class correct the softmax residuals left by the last round.</p><div class="meta"><span class="tag">gradient boosting</span><span class="tag blue">step by step</span><span class="tag">multi-class classification</span></div><div class="links"><a class="button" href="xgboost/">Open demo</a></div></article>
         </div>
       </div>
 
       <div class="topic-block topic-block-other">
-        <p class="topic-title">From other CPE courses (not part of this course's weeks)</p>
+        <p class="topic-title">From other CPE courses (not on the 01219362 schedule)</p>
         <div class="grid">
           <article class="card"><h3>Sampling &amp; Quantization</h3><p>See exactly what's lost from spatial sampling and intensity quantization, with Nyquist-limit and aliasing presets to make the tradeoff concrete.</p><div class="meta"><span class="tag">digital images</span><span class="tag blue">nyquist / aliasing</span></div><div class="links"><a class="button" href="sampling-quantization-demo/">Open demo</a></div></article>
         </div>
