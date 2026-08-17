@@ -53,3 +53,16 @@ button,input,select,textarea{font:inherit}
   .site-header,.site-footer{align-items:flex-start;flex-direction:column}
   .site-page-label{text-align:left}
 }
+
+/*
+  Ultrawide support, shared across every demo page.
+  Each demo sets its own base max-width on .app-shell/.shell (1080-1500px);
+  `body .app-shell` has higher specificity than their plain `.app-shell` rule,
+  so this wins regardless of stylesheet load order without editing every demo.
+*/
+@media(min-width:1700px){
+  body .app-shell,body .shell{max-width:min(92vw,1680px)}
+}
+@media(min-width:2400px){
+  body .app-shell,body .shell{max-width:min(80vw,2000px)}
+}
