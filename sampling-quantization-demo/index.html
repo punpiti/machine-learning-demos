@@ -1,0 +1,458 @@
+<meta charset="utf-8">
+<title>Sampling & Quantization — เห็นข้อมูลที่หายไปจริง ๆ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Open Graph / Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sampling &amp; Quantization — เห็นข้อมูลที่หายไปจริง ๆ">
+<meta property="og:description" content="เห็นข้อมูลที่หายไปจริง ๆ จาก spatial sampling และ intensity quantization พร้อมพรีเซ็ตสาธิต Nyquist limit / aliasing">
+<meta property="og:url" content="https://punpiti.github.io/machine-learning-demos/sampling-quantization-demo/">
+<meta property="og:image" content="https://punpiti.github.io/machine-learning-demos/sampling-quantization-demo/og.png">
+<meta property="og:image:width" content="1731">
+<meta property="og:image:height" content="909">
+<meta property="og:site_name" content="Machine Learning Demos">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Sampling &amp; Quantization — เห็นข้อมูลที่หายไปจริง ๆ">
+<meta name="twitter:description" content="เห็นข้อมูลที่หายไปจริง ๆ จาก spatial sampling และ intensity quantization พร้อมพรีเซ็ตสาธิต Nyquist limit / aliasing">
+<meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/sampling-quantization-demo/og.png">
+<style>
+  :root {
+    --bg: #f4f4f3;
+    --surface: #ffffff;
+    --surface-2: #ececea;
+    --border: #dcdbd7;
+    --text-primary: #201f1c;
+    --text-secondary: #524f49;
+    --text-muted: #86827a;
+    --accent: #b0592c;
+    --accent-ink: #ffffff;
+    --good: #12805f;
+    --warn: #b0592c;
+    --shadow: 0 1px 2px rgba(32,31,28,.06), 0 8px 24px rgba(32,31,28,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16140f; --surface: #1e1b16; --surface-2: #292420; --border: #3c362e;
+      --text-primary: #f1ede6; --text-secondary: #cac2b4; --text-muted: #86827a;
+      --accent: #e08a52; --accent-ink: #1a1108;
+      --good: #3fb98d; --warn: #e08a52;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16140f; --surface: #1e1b16; --surface-2: #292420; --border: #3c362e;
+    --text-primary: #f1ede6; --text-secondary: #cac2b4; --text-muted: #86827a;
+    --accent: #e08a52; --accent-ink: #1a1108;
+    --good: #3fb98d; --warn: #e08a52;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-primary); font-family: -apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif; line-height: 1.55; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 40px 20px 80px; display: flex; flex-direction: column; gap: 26px; }
+  .hero { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow { margin: 0; font: 600 12px/1 -apple-system,sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  h1 { margin: 0; font-family: Charter,"Iowan Old Style","Noto Serif Thai",Georgia,serif; font-weight: 600; font-size: clamp(26px,3.6vw,38px); text-wrap: balance; }
+  .lede { margin: 0; max-width: 70ch; color: var(--text-secondary); font-size: 16px; }
+  section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+
+  .narrative { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .insight { display: flex; gap: 12px; align-items: flex-start; opacity: .28; filter: grayscale(.4); transition: opacity .35s ease, filter .35s ease; }
+  .insight.active { opacity: 1; filter: none; }
+  .insight .dot { flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--border); }
+  .insight.active .dot { background: var(--accent); }
+  .insight p { margin: 0; font-family: Charter,"Iowan Old Style","Noto Serif Thai",Georgia,serif; font-size: 16px; }
+  .insight b { font-weight: 700; }
+  .insight .k-accent { color: var(--accent); }
+  .insight .k-good { color: var(--good); }
+
+  .section-title { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; }
+  .section-note { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+
+  .step-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button.action { font: 600 13px -apple-system,sans-serif; color: var(--text-secondary); background: var(--surface-2); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.action.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+  input[type="file"] { font-size: 12.5px; color: var(--text-secondary); }
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .toggle-row input { accent-color: var(--accent); }
+
+  .filter-controls { display: flex; flex-wrap: wrap; gap: 18px 26px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+  .slider-field { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { accent-color: var(--accent); flex: 1; }
+  .slider-val { font: 700 13px/1 ui-monospace,"SF Mono",Consolas,monospace; min-width: 5.5em; text-align: right; }
+  .readout { font-size: 12px; color: var(--text-muted); }
+  .readout b { color: var(--text-primary); }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 780px) { .compare-grid { grid-template-columns: 1fr; } }
+  .compare-box { display: flex; flex-direction: column; gap: 6px; }
+  .compare-box h4 { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+  .compare-box p.hint { margin: 0; font-size: 11px; color: var(--text-muted); }
+  .canvas-frame { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface-2); display: flex; align-items: center; justify-content: center; min-height: 90px; }
+  canvas { display: block; image-rendering: pixelated; max-width: 100%; height: auto; }
+  canvas.full-size { width: 100%; }
+  canvas.true-size { image-rendering: auto; }
+
+  .stat-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+  table.stat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .stat-table th, .stat-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .stat-table th:first-child, .stat-table td:first-child { text-align: left; }
+  .stat-table thead th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
+  .stat-table tr.highlight td { font-weight: 700; color: var(--accent); }
+  .ratio-banner { display: flex; flex-wrap: wrap; gap: 20px; align-items: baseline; padding: 12px 16px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); }
+  .ratio-banner .big { font: 700 26px ui-monospace,"SF Mono",Consolas,monospace; color: var(--accent); }
+  .ratio-banner .label { font-size: 12.5px; color: var(--text-secondary); }
+
+  .math-panel { padding: 18px 24px; }
+  .math-toggle { font: 600 13.5px -apple-system,sans-serif; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; }
+  .math-body { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .formula { font-family: ui-monospace,"SF Mono",Consolas,monospace; font-size: 12.5px; color: var(--text-primary); padding: 10px 12px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--border); }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 480px) {
+    .page { padding: 22px 14px 48px; gap: 18px; }
+    .narrative, .step-panel, .stat-panel, .math-panel { padding: 16px 16px; }
+  }
+  @media (min-width: 1050px) {
+    .page {
+      max-width: min(94vw, 1900px);
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      grid-template-areas: "hero hero" "narrative source" "narrative controls" "narrative compare" "narrative stats" "narrative math" "footer footer";
+      gap: 14px 28px;
+      padding: 20px 32px 26px;
+    }
+    .hero { grid-area: hero; }
+    .narrative { grid-area: narrative; position: sticky; top: 18px; align-self: start; max-height: calc(100vh - 36px); overflow-y: auto; }
+    .step-source { grid-area: source; padding: 16px 20px; }
+    .step-controls { grid-area: controls; padding: 16px 20px; }
+    .step-compare { grid-area: compare; padding: 16px 20px; }
+    .stat-panel { grid-area: stats; padding: 16px 20px; }
+    .math-panel { grid-area: math; padding: 14px 20px; }
+    footer { grid-area: footer; }
+  }
+  @media (min-width: 1900px) { .page { grid-template-columns: 410px 1fr; } }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <p class="eyebrow">01204483 Image Processing — Topic 03, Digital Images & 2D Preprocessing</p>
+    <h1>Sampling &amp; Quantization — เห็นข้อมูลที่หายไปจริง ๆ</h1>
+    <p class="lede">
+      Sampling = ลดจำนวน<b>ตำแหน่ง</b>ที่เก็บค่า, Quantization = ลดจำนวน<b>ระดับ</b>ค่าที่เก็บได้ต่อตำแหน่ง —
+      ทั้งสองอย่างทำให้ภาพขยับกลับมาขนาดเดิมได้ แต่ข้อมูลจริงที่เหลืออยู่น้อยลง
+      ด้านล่างจะเห็นทั้งขนาดจริง (เล็กลงจริง ๆ) และขนาดที่ขยายกลับมาให้ดู (บล็อก ๆ)
+      พร้อมตัวเลขปริมาณข้อมูลที่หายไป
+    </p>
+  </header>
+
+  <section class="card narrative">
+    <div class="insight active" id="insA">
+      <span class="dot"></span>
+      <p>Sampling คือการเลือก<b class="k-accent">ตำแหน่งพิกเซล</b>บนกริดที่ห่างขึ้น แล้วทิ้งพิกเซลระหว่างนั้นไปทั้งหมด ไม่ใช่การเบลอ/เฉลี่ย — เป็น "จุดสุ่มตัวอย่าง" ตามทฤษฎีจริง ๆ</p>
+    </div>
+    <div class="insight active" id="insB">
+      <span class="dot"></span>
+      <p>ภาพที่ "ขยายกลับ" ให้ใหญ่เท่าเดิม (บล็อกสี่เหลี่ยม) กับภาพ "ขนาดจริง" ที่เล็กลง — <b class="k-good">มีข้อมูลเท่ากันทุกประการ</b> การขยายกลับไม่ได้เพิ่มข้อมูลใหม่ แค่ทำซ้ำพิกเซลเดิมเพื่อแสดงผล</p>
+    </div>
+    <div class="insight active" id="insC">
+      <span class="dot"></span>
+      <p>ถ้าตัวอย่าง (sample) ห่างเกินไปเทียบกับความถี่ของลวดลายในภาพ จะเกิด <b class="k-accent">Aliasing</b> — ลองเลือกพรีเซ็ต "แถบความถี่ (Nyquist)" แล้วเพิ่ม block size ดูว่าจุดที่ลายเริ่ม "บิดเบี้ยวผิดรูป" ขยับซ้ายมาเรื่อย ๆ</p>
+    </div>
+    <div class="insight active" id="insD">
+      <span class="dot"></span>
+      <p>Nyquist limit ของการสุ่มทุก N พิกเซล คือความถี่สูงสุด <b class="k-accent">1/(2N) รอบ/พิกเซล</b> ที่ยังไม่ alias — ตัวเลขนี้อัปเดตสดตามสไลเดอร์ block size ด้านล่าง</p>
+    </div>
+    <div class="insight active" id="insE">
+      <span class="dot"></span>
+      <p>Quantization ลดจำนวน<b class="k-accent">ระดับความเข้ม/สี</b>ต่อพิกเซล — bit ยิ่งน้อย เห็นแถบขั้นบันได (posterization) ชัดขึ้น ปริมาณข้อมูลต่อพิกเซลก็ลดตามจำนวน bit ตรง ๆ</p>
+    </div>
+  </section>
+
+  <section class="card step-panel step-source">
+    <p class="section-title">1 · เลือกรูปภาพ + โหมดสี</p>
+    <div class="preset-row">
+      <button class="action" id="presetGradient">ไล่เฉดสี (เห็น banding)</button>
+      <button class="action" id="presetChirp">แถบความถี่ (Nyquist)</button>
+      <button class="action" id="presetShapes">รูปทรงหลายสี</button>
+      <input type="file" id="fileInput" accept="image/*" />
+    </div>
+    <label class="toggle-row"><input type="checkbox" id="grayToggle" /> แปลงเป็นขาวดำ (grayscale, 1 channel) แทนสี (RGB, 3 channels)</label>
+    <p class="section-note">ประมวลผลที่ 256×192 พิกเซล เพื่อให้หาร block size ได้ลงตัวทุกค่า</p>
+  </section>
+
+  <section class="card step-panel step-controls">
+    <p class="section-title">2 · ปรับ Sampling และ Quantization</p>
+    <div class="filter-controls">
+      <div class="field">
+        <label for="blockSlider">Sampling — Block size (N×N พิกเซลต่อ 1 ตัวอย่าง)</label>
+        <div class="slider-field">
+          <input type="range" id="blockSlider" min="0" max="6" step="1" value="0" />
+          <span class="slider-val" id="blockVal">1×1 (ไม่ลด)</span>
+        </div>
+        <span class="readout" id="nyquistReadout">—</span>
+      </div>
+      <div class="field">
+        <label for="bitsSlider">Quantization — bit ต่อ channel</label>
+        <div class="slider-field">
+          <input type="range" id="bitsSlider" min="1" max="8" step="1" value="8" />
+          <span class="slider-val" id="bitsVal">8 bit</span>
+        </div>
+        <span class="readout" id="levelsReadout">—</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card step-panel step-compare">
+    <p class="section-title">3 · เปรียบเทียบภาพ</p>
+    <div class="compare-grid">
+      <div class="compare-box">
+        <h4>ต้นฉบับ</h4>
+        <p class="hint">256×192 พิกเซล, เต็มระดับสี</p>
+        <div class="canvas-frame"><canvas id="origCanvas" class="full-size"></canvas></div>
+      </div>
+      <div class="compare-box">
+        <h4>ขนาดจริงหลังลดข้อมูล</h4>
+        <p class="hint" id="trueSizeHint">—</p>
+        <div class="canvas-frame"><canvas id="trueCanvas" class="true-size"></canvas></div>
+      </div>
+      <div class="compare-box">
+        <h4>ขยายกลับเป็น 256×192 (นี่คือภาพที่เราเห็น)</h4>
+        <p class="hint">ข้อมูลเท่ากับช่องกลางทุกประการ แค่ทำซ้ำพิกเซล</p>
+        <div class="canvas-frame"><canvas id="blownCanvas" class="full-size"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card stat-panel">
+    <p class="section-title">4 · ปริมาณข้อมูลที่ลดลง</p>
+    <div class="ratio-banner">
+      <div><div class="big" id="ratioBig">1:1</div><div class="label">อัตราส่วนข้อมูลลดลง</div></div>
+      <div><div class="big" id="pctBig">0%</div><div class="label">ลดลงจากต้นฉบับ</div></div>
+    </div>
+    <table class="stat-table">
+      <thead><tr><th>สถานะ</th><th>ความละเอียด</th><th>Channels</th><th>Bit/channel</th><th>ขนาดข้อมูล</th></tr></thead>
+      <tbody>
+        <tr><td>ต้นฉบับ</td><td id="statOrigRes">—</td><td id="statOrigCh">—</td><td id="statOrigBits">—</td><td id="statOrigSize">—</td></tr>
+        <tr class="highlight"><td>หลังปรับ (Sampling + Quantization)</td><td id="statNewRes">—</td><td id="statNewCh">—</td><td id="statNewBits">—</td><td id="statNewSize">—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card math-panel">
+    <button class="math-toggle" id="mathToggle" aria-expanded="false">แสดงสูตรคำนวณ</button>
+    <div class="math-body" id="mathBody" hidden>
+      <div class="formula">ขนาดข้อมูล (bit) = width × height × channels × bit/channel</div>
+      <div class="formula">Sampling: width' = width / N, height' = height / N (point sampling — เลือกพิกเซลมุมซ้ายบนของแต่ละบล็อก N×N)</div>
+      <div class="formula">Quantization: levels = 2^bit; step = 255/(levels−1); value' = round(round(value/step) × step)</div>
+      <div class="formula">Nyquist limit ของการสุ่มทุก N พิกเซล = 1 / (2N) รอบ/พิกเซล — ความถี่สูงกว่านี้จะ alias เมื่อสุ่มตัวอย่าง</div>
+    </div>
+  </section>
+
+  <footer>
+    ตัวอย่างสมมติเพื่อการสอน — Sampling ใช้ point sampling (ไม่เฉลี่ย) เพื่อให้เห็น aliasing ตามทฤษฎีตรง ๆ; ขนาดข้อมูลคำนวณจากจำนวนพิกเซล×channel×bit ล้วน ๆ ไม่รวม overhead ของไฟล์จริง (header, compression ฯลฯ)
+    <br><span style="opacity:.75;">Punpiti Piamsa-nga · Department of Computer Engineering, Kasetsart University</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var WORK_W = 256, WORK_H = 192;
+    var BLOCK_SIZES = [1, 2, 4, 8, 16, 32, 64];
+
+    function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+    function fmtBytes(bits) {
+      var bytes = bits / 8;
+      if (bytes < 1024) return bytes.toFixed(0) + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    }
+    function fmtInt(n) { return Math.round(n).toLocaleString("en-US"); }
+
+    var el = {};
+    ["presetGradient", "presetChirp", "presetShapes", "fileInput", "grayToggle",
+     "blockSlider", "blockVal", "nyquistReadout", "bitsSlider", "bitsVal", "levelsReadout",
+     "origCanvas", "trueCanvas", "blownCanvas", "trueSizeHint",
+     "ratioBig", "pctBig", "statOrigRes", "statOrigCh", "statOrigBits", "statOrigSize",
+     "statNewRes", "statNewCh", "statNewBits", "statNewSize",
+     "mathToggle", "mathBody"
+    ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+    var origCtx = el.origCanvas.getContext("2d");
+    var trueCtx = el.trueCanvas.getContext("2d");
+    var blownCtx = el.blownCanvas.getContext("2d");
+    el.origCanvas.width = WORK_W; el.origCanvas.height = WORK_H;
+    el.blownCanvas.width = WORK_W; el.blownCanvas.height = WORK_H;
+
+    var baseRGBA = null; // Uint8ClampedArray from source, always RGBA
+
+    // ---------- presets ----------
+    function drawGradient(ctx) {
+      var g = ctx.createLinearGradient(0, 0, WORK_W, WORK_H);
+      g.addColorStop(0, "#1a1030"); g.addColorStop(0.35, "#8a2f6f");
+      g.addColorStop(0.65, "#e0703a"); g.addColorStop(1, "#f5e07a");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, WORK_W, WORK_H);
+    }
+    function drawChirp(ctx) {
+      var f0 = 0.01, f1 = 0.5;
+      var img = ctx.createImageData(WORK_W, WORK_H);
+      for (var x = 0; x < WORK_W; x++) {
+        var phase = 2 * Math.PI * (f0 * x + (f1 - f0) * x * x / (2 * WORK_W));
+        var v = Math.round(128 + 127 * Math.sin(phase));
+        for (var y = 0; y < WORK_H; y++) {
+          var idx = (y * WORK_W + x) * 4;
+          img.data[idx] = v; img.data[idx + 1] = v; img.data[idx + 2] = v; img.data[idx + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+    function drawShapes(ctx) {
+      ctx.fillStyle = "#20232a"; ctx.fillRect(0, 0, WORK_W, WORK_H);
+      var patches = [
+        [40,40,'#e6432f'],[110,40,'#3d7fe0'],[180,40,'#3fbf6c'],[220,100,'#f2c22c'],
+        [40,110,'#e07de0'],[110,140,'#20c4c4'],[180,150,'#f2914a']
+      ];
+      patches.forEach(function (p) { ctx.fillStyle = p[2]; ctx.beginPath(); ctx.arc(p[0], p[1], 34, 0, Math.PI * 2); ctx.fill(); });
+      ctx.strokeStyle = "#f4f4f4"; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(10, 20); ctx.lineTo(246, 172); ctx.stroke();
+    }
+    function setPresetActive(btn) {
+      [el.presetGradient, el.presetChirp, el.presetShapes].forEach(function (b) { b.classList.remove("active"); });
+      if (btn) btn.classList.add("active");
+    }
+    function loadFromDraw(drawFn) {
+      var tmp = document.createElement("canvas"); tmp.width = WORK_W; tmp.height = WORK_H;
+      var tctx = tmp.getContext("2d");
+      drawFn(tctx);
+      baseRGBA = tctx.getImageData(0, 0, WORK_W, WORK_H).data;
+      recompute();
+    }
+    el.presetGradient.addEventListener("click", function () { setPresetActive(el.presetGradient); loadFromDraw(drawGradient); });
+    el.presetChirp.addEventListener("click", function () { setPresetActive(el.presetChirp); loadFromDraw(drawChirp); });
+    el.presetShapes.addEventListener("click", function () { setPresetActive(el.presetShapes); loadFromDraw(drawShapes); });
+    el.fileInput.addEventListener("change", function (e) {
+      var file = e.target.files[0]; if (!file) return;
+      var img = new Image();
+      img.onload = function () {
+        setPresetActive(null);
+        loadFromDraw(function (ctx) {
+          var scale = Math.max(WORK_W / img.width, WORK_H / img.height);
+          var dw = img.width * scale, dh = img.height * scale;
+          ctx.drawImage(img, (WORK_W - dw) / 2, (WORK_H - dh) / 2, dw, dh);
+        });
+        URL.revokeObjectURL(img.src);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+    el.grayToggle.addEventListener("change", recompute);
+
+    // ---------- pipeline ----------
+    function quantizeVal(v, levels) {
+      if (levels <= 1) return 0;
+      var step = 255 / (levels - 1);
+      return clamp(Math.round(Math.round(v / step) * step), 0, 255);
+    }
+
+    function recompute() {
+      if (!baseRGBA) return;
+      var blockIdx = Number(el.blockSlider.value);
+      var N = BLOCK_SIZES[blockIdx];
+      var bits = Number(el.bitsSlider.value);
+      var levels = Math.pow(2, bits);
+      var gray = el.grayToggle.checked;
+      var channels = gray ? 1 : 3;
+
+      el.blockVal.textContent = N + "×" + N + (N === 1 ? " (ไม่ลด)" : "");
+      var nyquist = 1 / (2 * N);
+      el.nyquistReadout.textContent = "Nyquist limit = 1/(2×" + N + ") = " + nyquist.toFixed(4) + " รอบ/พิกเซล — ความถี่สูงกว่านี้จะ alias";
+      el.bitsVal.textContent = bits + " bit";
+      el.levelsReadout.textContent = "256 ระดับ → " + levels + " ระดับ ต่อ channel";
+
+      // convert to working channels (gray or rgb), always as flat arrays indexed like RGBA source
+      var W = WORK_W, H = WORK_H;
+
+      // draw original (respecting gray toggle, no reduction)
+      var origImg = origCtx.createImageData(W, H);
+      for (var p = 0; p < W * H; p++) {
+        var o = p * 4;
+        if (gray) {
+          var g0 = Math.round(0.299 * baseRGBA[o] + 0.587 * baseRGBA[o + 1] + 0.114 * baseRGBA[o + 2]);
+          origImg.data[o] = g0; origImg.data[o + 1] = g0; origImg.data[o + 2] = g0;
+        } else {
+          origImg.data[o] = baseRGBA[o]; origImg.data[o + 1] = baseRGBA[o + 1]; origImg.data[o + 2] = baseRGBA[o + 2];
+        }
+        origImg.data[o + 3] = 255;
+      }
+      origCtx.putImageData(origImg, 0, 0);
+
+      // point-sample then quantize -> small (trueW x trueH) result
+      var trueW = Math.ceil(W / N), trueH = Math.ceil(H / N);
+      el.trueCanvas.width = trueW; el.trueCanvas.height = trueH;
+      var smallImg = trueCtx.createImageData(trueW, trueH);
+      for (var ty = 0; ty < trueH; ty++) {
+        for (var tx = 0; tx < trueW; tx++) {
+          var sx = Math.min(tx * N, W - 1), sy = Math.min(ty * N, H - 1);
+          var so = (sy * W + sx) * 4;
+          var r, g, b;
+          if (gray) {
+            var gv = quantizeVal(Math.round(0.299 * baseRGBA[so] + 0.587 * baseRGBA[so + 1] + 0.114 * baseRGBA[so + 2]), levels);
+            r = g = b = gv;
+          } else {
+            r = quantizeVal(baseRGBA[so], levels); g = quantizeVal(baseRGBA[so + 1], levels); b = quantizeVal(baseRGBA[so + 2], levels);
+          }
+          var to = (ty * trueW + tx) * 4;
+          smallImg.data[to] = r; smallImg.data[to + 1] = g; smallImg.data[to + 2] = b; smallImg.data[to + 3] = 255;
+        }
+      }
+      trueCtx.putImageData(smallImg, 0, 0);
+      el.trueSizeHint.textContent = trueW + "×" + trueH + " พิกเซล — ขนาดจริงที่แสดง (ไม่ถูกยืด)";
+
+      // blow small result back up to WxH via nearest-neighbor replication (no new info)
+      var blownImg = blownCtx.createImageData(W, H);
+      for (var y = 0; y < H; y++) {
+        var ty2 = Math.min(Math.floor(y / N), trueH - 1);
+        for (var x = 0; x < W; x++) {
+          var tx2 = Math.min(Math.floor(x / N), trueW - 1);
+          var fromO = (ty2 * trueW + tx2) * 4, toO = (y * W + x) * 4;
+          blownImg.data[toO] = smallImg.data[fromO]; blownImg.data[toO + 1] = smallImg.data[fromO + 1];
+          blownImg.data[toO + 2] = smallImg.data[fromO + 2]; blownImg.data[toO + 3] = 255;
+        }
+      }
+      blownCtx.putImageData(blownImg, 0, 0);
+
+      // ---------- data-size stats ----------
+      var origBits = W * H * channels * 8;
+      var newBits = trueW * trueH * channels * bits;
+      var pct = 100 * (1 - newBits / origBits);
+      var ratio = origBits / newBits;
+
+      el.ratioBig.textContent = ratio.toFixed(1) + ":1";
+      el.pctBig.textContent = pct.toFixed(1) + "%";
+      el.statOrigRes.textContent = W + "×" + H;
+      el.statOrigCh.textContent = channels;
+      el.statOrigBits.textContent = "8 bit";
+      el.statOrigSize.textContent = fmtInt(origBits) + " bit (" + fmtBytes(origBits) + ")";
+      el.statNewRes.textContent = trueW + "×" + trueH;
+      el.statNewCh.textContent = channels;
+      el.statNewBits.textContent = bits + " bit";
+      el.statNewSize.textContent = fmtInt(newBits) + " bit (" + fmtBytes(newBits) + ")";
+    }
+
+    el.blockSlider.addEventListener("input", recompute);
+    el.bitsSlider.addEventListener("input", recompute);
+    el.mathToggle.addEventListener("click", function () {
+      var show = el.mathBody.hidden;
+      el.mathBody.hidden = !show;
+      el.mathToggle.setAttribute("aria-expanded", String(show));
+      el.mathToggle.textContent = show ? "ซ่อนสูตร" : "แสดงสูตรคำนวณ";
+    });
+
+    setPresetActive(el.presetGradient);
+    loadFromDraw(drawGradient);
+  })();
+</script>

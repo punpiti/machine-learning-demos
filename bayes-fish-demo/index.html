@@ -1,0 +1,1025 @@
+<meta charset="utf-8">
+<title>Salmon หรือ Seabass — Bayes vs Logistic Regression</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Open Graph / Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Salmon หรือ Seabass? — Bayes vs Logistic Regression">
+<meta property="og:description" content="สุ่มตัวอย่างจาก population จริง แล้วจำแนกด้วย Bayes กับ Logistic Regression เทียบเส้นแบ่งกับ population จริงทั้งหมด">
+<meta property="og:url" content="https://punpiti.github.io/machine-learning-demos/bayes-fish-demo/">
+<meta property="og:image" content="https://punpiti.github.io/machine-learning-demos/bayes-fish-demo/og.png">
+<meta property="og:image:width" content="1731">
+<meta property="og:image:height" content="909">
+<meta property="og:site_name" content="Machine Learning Demos">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Salmon หรือ Seabass? — Bayes vs Logistic Regression">
+<meta name="twitter:description" content="สุ่มตัวอย่างจาก population จริง แล้วจำแนกด้วย Bayes กับ Logistic Regression เทียบเส้นแบ่งกับ population จริงทั้งหมด">
+<meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/bayes-fish-demo/og.png">
+<style>
+  :root {
+    --bg: #f6f4f1;
+    --surface: #ffffff;
+    --surface-2: #eeebe5;
+    --border: #ddd7cd;
+    --text-primary: #241f1a;
+    --text-secondary: #574e44;
+    --text-muted: #8a8074;
+    --accent: #0e7a9c;
+    --accent-ink: #ffffff;
+    --salmon: #d9724e;
+    --seabass: #0e7a9c;
+    --pop-salmon: color-mix(in srgb, var(--salmon) 45%, var(--text-muted) 55%);
+    --pop-seabass: color-mix(in srgb, var(--seabass) 45%, var(--text-muted) 55%);
+    --shadow: 0 1px 2px rgba(36, 31, 26, 0.06), 0 8px 24px rgba(36, 31, 26, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14120f;
+      --surface: #1c1916;
+      --surface-2: #262220;
+      --border: #38332d;
+      --text-primary: #f1ece4;
+      --text-secondary: #c9beaf;
+      --text-muted: #8a8074;
+      --accent: #3596be;
+      --accent-ink: #0c1013;
+      --salmon: #cc6c46;
+      --seabass: #3596be;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14120f;
+    --surface: #1c1916;
+    --surface-2: #262220;
+    --border: #38332d;
+    --text-primary: #f1ece4;
+    --text-secondary: #c9beaf;
+    --text-muted: #8a8074;
+    --accent: #3596be;
+    --accent-ink: #0c1013;
+    --salmon: #cc6c46;
+    --seabass: #3596be;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-primary);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+  }
+
+  .page {
+    max-width: 1020px; margin: 0 auto; padding: 40px 20px 80px;
+    display: flex; flex-direction: column; gap: 26px;
+  }
+
+  .hero { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    margin: 0; font: 600 12px/1 -apple-system, sans-serif;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
+  }
+  h1 {
+    margin: 0; font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-weight: 600; font-size: clamp(26px, 3.6vw, 38px); text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 64ch; color: var(--text-secondary); font-size: 16px; }
+
+  section.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+
+  .narrative { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .insight {
+    display: flex; gap: 12px; align-items: flex-start;
+    opacity: 0.28; filter: grayscale(0.4);
+    transition: opacity 0.35s ease, filter 0.35s ease;
+  }
+  .insight.active { opacity: 1; filter: none; }
+  .insight .dot {
+    flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%;
+    background: var(--border); transition: background 0.35s ease;
+  }
+  .insight.active .dot { background: var(--accent); }
+  .insight p {
+    margin: 0; font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-size: 16px; color: var(--text-primary);
+  }
+  .insight b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .insight .k-salmon { color: var(--salmon); }
+  .insight .k-seabass { color: var(--seabass); }
+  .insight .k-accent { color: var(--accent); }
+
+  .section-title {
+    margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); font-weight: 700;
+  }
+
+  /* --- Sample panel --- */
+  .sample-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .sample-controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 220px; flex: 1; }
+  .field label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+  .field-row { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .field-value {
+    font: 700 13px/1 ui-monospace, "SF Mono", Consolas, monospace;
+    min-width: 3em; text-align: right; font-variant-numeric: tabular-nums;
+  }
+  button.action {
+    font: 600 13.5px -apple-system, sans-serif; color: var(--accent-ink);
+    background: var(--accent); border: none; border-radius: 8px;
+    padding: 9px 16px; cursor: pointer; white-space: nowrap;
+  }
+  button.action:hover { filter: brightness(1.06); }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-secondary); }
+  .checkbox-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+  .prob-bars { display: flex; flex-direction: column; gap: 10px; }
+  .prob-row { display: grid; grid-template-columns: 168px 1fr 58px; align-items: center; gap: 10px; }
+  .prob-row.dim { opacity: 0.32; transition: opacity 0.3s ease; }
+  .prob-row:not(.dim) { transition: opacity 0.3s ease; }
+  .prob-label { font-size: 13px; color: var(--text-secondary); }
+  .prob-bar {
+    height: 12px; border-radius: 6px; background: var(--surface-2);
+    border: 1px solid var(--border); overflow: hidden; display: flex;
+  }
+  .prob-fill { height: 100%; transition: width 0.4s cubic-bezier(.2,.7,.3,1); }
+  .prob-fill.salmon { background: var(--salmon); }
+  .prob-fill.seabass { background: var(--seabass); }
+  .prob-num {
+    font: 700 14px/1 ui-monospace, "SF Mono", Consolas, monospace; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .counts-line { font-size: 12.5px; color: var(--text-muted); }
+
+  /* --- Classification panel (scatter with axis-aligned likelihood + population) --- */
+  .classify-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .mode-row { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; }
+  .mode-options { display: flex; gap: 14px; flex-wrap: wrap; }
+  .mode-option { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-secondary); cursor: pointer; }
+  .mode-option input { accent-color: var(--accent); cursor: pointer; }
+
+  .scatter-wrap { display: flex; flex-direction: column; gap: 8px; }
+  svg#scatterSvg { width: 100%; height: auto; display: block; }
+  .scatter-legend { display: flex; gap: 14px 18px; flex-wrap: wrap; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .legend-swatch { width: 11px; height: 11px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--surface); }
+  .legend-swatch.hollow { background: transparent; border: 1.5px solid var(--text-muted); }
+  .legend-line { width: 16px; height: 0; border-top: 2px solid var(--text-primary); display: inline-block; }
+  .legend-line.dashed { border-top-style: dashed; }
+
+  .error-bars { display: flex; flex-direction: column; gap: 10px; }
+  .error-row { display: grid; grid-template-columns: 168px 1fr 58px; align-items: center; gap: 10px; }
+  .error-row.active .error-label { color: var(--text-primary); font-weight: 700; }
+  .error-fill { background: var(--text-muted); }
+  .error-row.active .error-fill { background: var(--accent); }
+  .error-caption { margin: 2px 0 0; font-size: 11.5px; color: var(--text-muted); }
+
+  .testfish-panel {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 16px 18px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);
+  }
+  .testfish-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .testfish-sliders { grid-template-columns: 1fr; } }
+  .testfish-result { display: flex; flex-wrap: wrap; gap: 18px; font-size: 13.5px; }
+  .testfish-result b { font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+  }
+  .pill.salmon { background: color-mix(in srgb, var(--salmon) 18%, transparent); color: var(--salmon); }
+  .pill.seabass { background: color-mix(in srgb, var(--seabass) 18%, transparent); color: var(--seabass); }
+
+  /* --- Math panel --- */
+  .math-panel { padding: 18px 24px; }
+  .math-toggle {
+    font: 600 13.5px -apple-system, sans-serif; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .math-body { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .math-block { display: flex; flex-direction: column; gap: 8px; }
+  .math-block h4 { margin: 0; font-size: 13px; color: var(--text-secondary); font-weight: 700; }
+  .formula {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13.5px;
+    color: var(--text-primary); padding: 14px; background: var(--surface-2);
+    border-radius: 10px; border: 1px solid var(--border);
+  }
+  .formula-live { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac .num, .frac .den { padding: 2px 6px; white-space: nowrap; }
+  .frac .num { border-bottom: 1.5px solid currentColor; }
+  .formula-result {
+    margin: 0; text-align: center; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+  }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* Small phones: tighten padding/gaps so more fits without feeling cramped */
+  @media (max-width: 480px) {
+    .page { padding: 22px 14px 48px; gap: 18px; }
+    .narrative, .sample-panel, .classify-panel, .math-panel { padding: 16px 16px; }
+  }
+
+  /* Wide screens (assume full-screen browser): sidebar rail + a compact
+     working column. The scatter plot's width is capped so its height
+     (now taller, since likelihood curves live on its own axes) never
+     balloons past what a full-screen viewport can show at once. */
+  @media (min-width: 1050px) {
+    .page {
+      max-width: min(94vw, 1900px);
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      grid-template-areas:
+        "hero hero"
+        "narrative sample"
+        "narrative classify"
+        "narrative math"
+        "footer footer";
+      gap: 14px 28px;
+      padding: 20px 32px 26px;
+    }
+    .hero { grid-area: hero; }
+    .narrative {
+      grid-area: narrative; position: sticky; top: 18px; align-self: start;
+      max-height: calc(100vh - 36px); overflow-y: auto;
+    }
+    .sample-panel { grid-area: sample; padding: 16px 20px; }
+    .classify-panel {
+      grid-area: classify; padding: 16px 20px;
+      display: grid;
+      grid-template-columns: minmax(380px, 620px) minmax(240px, 1fr);
+      grid-template-areas:
+        "title title"
+        "modes modes"
+        "scatter side";
+      gap: 10px 24px;
+    }
+    .classify-panel > .section-title { grid-area: title; }
+    .classify-panel .mode-row { grid-area: modes; }
+    .classify-panel .scatter-wrap { grid-area: scatter; max-width: 620px; }
+    .classify-panel .classify-side {
+      grid-area: side; display: flex; flex-direction: column; gap: 16px;
+    }
+    .classify-panel .classify-side .testfish-sliders { grid-template-columns: 1fr; }
+    .math-panel { grid-area: math; padding: 14px 20px; }
+    footer { grid-area: footer; }
+  }
+  @media (min-width: 1900px) {
+    .page { grid-template-columns: 420px 1fr; }
+  }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <p class="eyebrow">01204483 Image Processing — Topic 02, CV + ML Intro</p>
+    <h1>Salmon หรือ Seabass? — จาก Bayes ถึง Logistic Regression</h1>
+    <p class="lede">
+      สมมุติในทะเลมีปลาแค่ 2 ชนิด ประชากรปลาใหญ่มาก (จุดเทาบาง ๆ ในกราฟ) เรา
+      สำรวจไม่ได้ทั้งหมด จึงเริ่มจากการสุ่มจับตัวอย่างขึ้นมา วัด 2 feature
+      (ความยาว, ความสว่างผิว) แล้วดูว่า prior/likelihood ที่ได้จากตัวอย่างมี
+      error แค่ไหนเทียบกับเส้นแบ่งจริงของทั้ง population
+    </p>
+  </header>
+
+  <section class="card narrative">
+    <div class="insight active" id="insightF0">
+      <span class="dot"></span>
+      <p>
+        เราสุ่มจับตัวอย่างปลาขึ้นมา <b id="txtN">70</b> ตัว จาก population
+        ที่ใหญ่เกินจะสำรวจทั้งหมด (จุดเทาบาง ๆ ในกราฟคือ population จริง)
+      </p>
+    </div>
+    <div class="insight active" id="insightF1">
+      <span class="dot"></span>
+      <p>
+        จากตัวอย่าง คำนวณ prior ได้ <b class="k-salmon" id="txtPriorSample">—</b>
+        — แต่ค่านี้มี error เทียบกับสัดส่วนจริงทั้งทะเล ลองกดเฉลย
+        population จริงดูที่แผงด้านขวา ยิ่งตัวอย่างเล็ก ยิ่งเพี้ยนง่าย
+      </p>
+    </div>
+    <div class="insight active" id="insightF2">
+      <span class="dot"></span>
+      <p>
+        ความยาวและความสว่างผิวของปลาแต่ละชนิด มี likelihood ที่
+        <b class="k-accent">overlap</b> กัน (เส้นโค้งเหนือ/ข้างกราฟ) — ปลาบางตัว
+        ยาว/สว่างจนแยกชนิดจาก feature เดียวไม่ออก
+      </p>
+    </div>
+    <div class="insight active" id="insightF3">
+      <span class="dot"></span>
+      <p>
+        รวม 2 features เข้าด้วยกันด้วย Bayes' theorem แล้วให้ error บนตัวอย่าง
+        นี้เหลือ <b class="k-accent" id="txtBayesError">—</b>
+      </p>
+    </div>
+    <div class="insight active" id="insightF4">
+      <span class="dot"></span>
+      <p>
+        มองข้อมูลชุดเดียวกันเป็น scatter plot แล้วหาเส้นแบ่งด้วย
+        <b class="k-accent">Logistic Regression</b> — error
+        <b class="k-accent" id="txtLogisticError">—</b> — เทียบกับเส้นทึบ
+        (regression line ที่ประเมินจาก population จริงทั้งหมด) จะเห็นได้ว่า
+        เส้นจากตัวอย่างคลาดเคลื่อนไปแค่ไหน
+      </p>
+    </div>
+  </section>
+
+  <section class="card sample-panel">
+    <p class="section-title">1 · สุ่มตัวอย่างจาก Population</p>
+    <div class="sample-controls">
+      <div class="field">
+        <label for="sampleSizeSlider">ขนาดตัวอย่าง (n)</label>
+        <div class="field-row">
+          <input type="range" id="sampleSizeSlider" min="20" max="200" step="1" value="70" />
+          <span class="field-value" id="sampleSizeValue">70</span>
+        </div>
+      </div>
+      <button class="action" id="resampleBtn">สุ่มตัวอย่างใหม่</button>
+      <label class="checkbox-row">
+        <input type="checkbox" id="revealToggle" />
+        เฉลยสัดส่วนจริงของ population
+      </label>
+    </div>
+
+    <div class="prob-bars">
+      <div class="prob-row">
+        <span class="prob-label">Prior (Salmon) — จากตัวอย่าง</span>
+        <div class="prob-bar"><div class="prob-fill salmon" id="priorSampleFill" style="width:50%"></div></div>
+        <span class="prob-num" id="priorSampleNum">—</span>
+      </div>
+      <div class="prob-row dim" id="priorTrueRow">
+        <span class="prob-label">Prior (Salmon) — population จริง (คงที่)</span>
+        <div class="prob-bar"><div class="prob-fill salmon" id="priorTrueFill" style="width:55%"></div></div>
+        <span class="prob-num" id="priorTrueNum">•••</span>
+      </div>
+    </div>
+    <p class="counts-line" id="countsLine">—</p>
+    <p class="counts-line" id="convergenceLine">ลองลาก n ขึ้น — แถบบนกับแถบล่างควรค่อย ๆ ใกล้กันขึ้นเรื่อย ๆ</p>
+  </section>
+
+  <section class="card classify-panel">
+    <p class="section-title">2 · Likelihood บนแกน + จำแนกด้วย Bayes กับ Logistic Regression</p>
+
+    <div class="mode-row">
+      <div class="mode-options">
+        <label class="mode-option"><input type="radio" name="clsMode" value="bayes" checked /> แสดงขอบเขต Bayes</label>
+        <label class="mode-option"><input type="radio" name="clsMode" value="logistic" /> แสดงขอบเขต Logistic Regression</label>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="compareToggle" />
+        ทับเส้นแบ่งของอีกวิธี (เส้นประบาง)
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="showPopBoundary" checked />
+        แสดงเส้นแบ่งจริงของ population (เส้นทึบ)
+      </label>
+    </div>
+
+    <div class="scatter-wrap">
+      <svg viewBox="0 0 540 430" id="scatterSvg" preserveAspectRatio="xMidYMid meet">
+        <g id="meshGroup"></g>
+        <g id="axesGroup"></g>
+        <g id="marginalGroup"></g>
+        <g id="populationGroup"></g>
+        <path id="populationBoundary" fill="none" stroke="var(--text-primary)" stroke-width="2" opacity="0.55" />
+        <path id="compareBoundary" fill="none" stroke="var(--text-primary)" stroke-width="1.75" stroke-dasharray="5,4" opacity="0" />
+        <g id="pointsGroup"></g>
+        <g id="testFishMarker"></g>
+      </svg>
+      <div class="scatter-legend">
+        <span class="legend-item"><i class="legend-swatch" style="background:var(--salmon)"></i>Salmon (ตัวอย่าง)</span>
+        <span class="legend-item"><i class="legend-swatch" style="background:var(--seabass)"></i>Seabass (ตัวอย่าง)</span>
+        <span class="legend-item"><i class="legend-swatch hollow"></i>Population จริง (คงที่)</span>
+        <span class="legend-item"><i class="legend-swatch" style="background:var(--surface);border-color:var(--text-primary)"></i>ปลาทดสอบ</span>
+        <span class="legend-item"><i class="legend-line"></i>เส้นแบ่งจริงของ population</span>
+        <span class="legend-item"><i class="legend-line dashed"></i>เส้นแบ่งของอีกวิธี (เทียบ)</span>
+      </div>
+    </div>
+
+    <div class="classify-side">
+      <div class="error-bars">
+        <div class="error-row" id="errorRowBayes">
+          <span class="prob-label error-label">Error — Bayes (2 features)</span>
+          <div class="prob-bar"><div class="prob-fill error-fill" id="bayesErrorFill" style="width:10%"></div></div>
+          <span class="prob-num" id="bayesErrorNum">—</span>
+        </div>
+        <div class="error-row" id="errorRowLogistic">
+          <span class="prob-label error-label">Error — Logistic Regression</span>
+          <div class="prob-bar"><div class="prob-fill error-fill" id="logisticErrorFill" style="width:10%"></div></div>
+          <span class="prob-num" id="logisticErrorNum">—</span>
+        </div>
+        <p class="error-caption">error ด้านบน = สัดส่วนตัวอย่างทั้งชุดที่ถูกจำแนกผิด (batch-level, resubstitution)</p>
+      </div>
+
+      <div class="testfish-panel">
+        <p class="section-title" style="margin:0">ลองปลาทดสอบ 1 ตัว</p>
+        <div class="testfish-sliders">
+          <div class="field">
+            <label for="testLenSlider">ความยาว (ซม.)</label>
+            <div class="field-row">
+              <input type="range" id="testLenSlider" min="15" max="100" step="1" value="57" />
+              <span class="field-value" id="testLenValue">57</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="testBriSlider">ความสว่างผิว</label>
+            <div class="field-row">
+              <input type="range" id="testBriSlider" min="0" max="100" step="1" value="48" />
+              <span class="field-value" id="testBriValue">48</span>
+            </div>
+          </div>
+        </div>
+        <div class="testfish-result">
+          <span>Bayes ทาย: <span class="pill" id="testBayesPill">—</span>
+            conf. <b id="testBayesProb">—</b> · decision error <b id="testBayesError">—</b></span>
+          <span>Logistic ทาย: <span class="pill" id="testLogisticPill">—</span>
+            conf. <b id="testLogisticProb">—</b> · decision error <b id="testLogisticError">—</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card math-panel">
+    <button class="math-toggle" id="mathToggle" aria-expanded="false">แสดงสูตรคำนวณ</button>
+    <div class="math-body" id="mathBody" hidden>
+      <div class="math-block">
+        <h4>Naive Bayes (2 features อิสระต่อกัน)</h4>
+        <div class="formula">
+          <span>P(salmon | L,B) =</span>
+          <span class="frac">
+            <span class="num">P(salmon) · p(L|salmon) · p(B|salmon)</span>
+            <span class="den">Σ ทุกชนิด [ P(ชนิด) · p(L|ชนิด) · p(B|ชนิด) ]</span>
+          </span>
+        </div>
+        <div class="formula formula-live" id="bayesFormulaLive">—</div>
+        <p class="formula-result" id="bayesFormulaResult">—</p>
+      </div>
+      <div class="math-block">
+        <h4>Logistic Regression</h4>
+        <div class="formula">
+          <span>P(salmon | L,B) = σ(w₁·z_L + w₂·z_B + b),</span>
+          <span>σ(x) = 1 / (1 + e⁻ˣ)</span>
+        </div>
+        <div class="formula formula-live" id="logisticFormulaLive">—</div>
+        <p class="formula-result" id="logisticFormulaResult">—</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    ข้อมูลปลาทั้งหมดสร้างจากการสุ่มในเบราว์เซอร์เพื่อการสอน ไม่ใช่ข้อมูลปลาจริง —
+    error ที่แสดงเป็น resubstitution error (วัดบนตัวอย่างชุดเดียวกับที่ใช้สร้างโมเดล);
+    population จำลองด้วย 380 จุด แล้ว fit logistic regression บนจุดนั้นแทนค่าจริง
+    <br><span style="opacity:.75;">Punpiti Piamsa-nga · Department of Computer Engineering, Kasetsart University</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    // ---------- "true" population (hidden ground truth) ----------
+    var TRUE_PRIOR_SALMON = 0.55;
+    var POP = {
+      salmon:  { length: { mean: 64, sd: 8 },  brightness: { mean: 35, sd: 9 } },
+      seabass: { length: { mean: 50, sd: 7 },  brightness: { mean: 63, sd: 10 } }
+    };
+    var LEN_MIN = 15, LEN_MAX = 100, BRI_MIN = 0, BRI_MAX = 100;
+    var SD_FLOOR = 2;
+    var POP_N = 380;
+
+    var el = {};
+    ["sampleSizeSlider", "sampleSizeValue", "resampleBtn", "revealToggle",
+     "priorSampleFill", "priorSampleNum", "priorTrueRow", "priorTrueFill", "priorTrueNum", "countsLine", "convergenceLine",
+     "meshGroup", "axesGroup", "marginalGroup", "populationGroup", "pointsGroup", "testFishMarker",
+     "populationBoundary", "compareBoundary", "showPopBoundary",
+     "compareToggle", "bayesErrorFill", "bayesErrorNum", "logisticErrorFill", "logisticErrorNum",
+     "errorRowBayes", "errorRowLogistic",
+     "testLenSlider", "testLenValue", "testBriSlider", "testBriValue",
+     "testBayesPill", "testBayesProb", "testBayesError", "testLogisticPill", "testLogisticProb", "testLogisticError",
+     "insightF1", "txtN", "txtPriorSample", "txtBayesError", "txtLogisticError",
+     "mathToggle", "mathBody",
+     "bayesFormulaLive", "bayesFormulaResult", "logisticFormulaLive", "logisticFormulaResult"
+    ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+    // ---------- math helpers ----------
+    function gaussianRandom(mean, sd) {
+      var u = 1 - Math.random(), v = Math.random();
+      var z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return mean + z * sd;
+    }
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+    function gaussianPdf(x, mean, sd) {
+      var z = (x - mean) / sd;
+      return Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI));
+    }
+    function fmt(n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ""); }
+    function fmtPdf(n) { return n.toFixed(4); }
+
+    function meanSd(vals) {
+      var m = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+      var variance = vals.reduce(function (a, b) { return a + (b - m) * (b - m); }, 0) / vals.length;
+      return { mean: m, sd: Math.max(Math.sqrt(variance), SD_FLOOR) };
+    }
+
+    function generateSample(n) {
+      var arr = [];
+      for (var i = 0; i < n; i++) {
+        var isSalmon = Math.random() < TRUE_PRIOR_SALMON;
+        var species = isSalmon ? "salmon" : "seabass";
+        var p = POP[species];
+        var length = clamp(gaussianRandom(p.length.mean, p.length.sd), LEN_MIN, LEN_MAX);
+        var brightness = clamp(gaussianRandom(p.brightness.mean, p.brightness.sd), BRI_MIN, BRI_MAX);
+        arr.push({ species: species, length: length, brightness: brightness });
+      }
+      return arr;
+    }
+
+    // draws an actual subset of the (already generated) population points —
+    // a real sample must be literal members of the population, not a fresh
+    // independent draw from the same distribution, or the colored sample
+    // dots would land off of the gray population dots on the scatter.
+    function sampleFromPopulation(n) {
+      var idx = populationPoints.map(function (_, i) { return i; });
+      for (var i = idx.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = idx[i]; idx[i] = idx[j]; idx[j] = tmp;
+      }
+      return idx.slice(0, Math.min(n, populationPoints.length)).map(function (i) { return populationPoints[i]; });
+    }
+
+    function computeStats(arr) {
+      var bySalmon = arr.filter(function (d) { return d.species === "salmon"; });
+      var bySeabass = arr.filter(function (d) { return d.species === "seabass"; });
+      var n = arr.length;
+      return {
+        n: n,
+        priorSalmon: bySalmon.length / n,
+        priorSeabass: bySeabass.length / n,
+        salmon: {
+          count: bySalmon.length,
+          length: meanSd(bySalmon.map(function (d) { return d.length; })),
+          brightness: meanSd(bySalmon.map(function (d) { return d.brightness; }))
+        },
+        seabass: {
+          count: bySeabass.length,
+          length: meanSd(bySeabass.map(function (d) { return d.length; })),
+          brightness: meanSd(bySeabass.map(function (d) { return d.brightness; }))
+        }
+      };
+    }
+
+    // ---------- sample-based state ----------
+    var samples = [];
+    var stats = null;
+    var stdz = null; // {meanLen, sdLen, meanBri, sdBri}
+    var logisticModel = null; // {w1, w2, b}
+
+    // ---------- population (fixed) state ----------
+    var populationPoints = generateSample(POP_N);
+    var popStdz = null;
+    var populationModel = null;
+
+    function bayesLikelihoods(length, brightness) {
+      var likelihoodSalmon = gaussianPdf(length, stats.salmon.length.mean, stats.salmon.length.sd) *
+               gaussianPdf(brightness, stats.salmon.brightness.mean, stats.salmon.brightness.sd);
+      var likelihoodSeabass = gaussianPdf(length, stats.seabass.length.mean, stats.seabass.length.sd) *
+               gaussianPdf(brightness, stats.seabass.brightness.mean, stats.seabass.brightness.sd);
+      return { likelihoodSalmon: likelihoodSalmon, likelihoodSeabass: likelihoodSeabass };
+    }
+    function bayesPosteriorSalmon(length, brightness) {
+      var L = bayesLikelihoods(length, brightness);
+      var num = L.likelihoodSalmon * stats.priorSalmon;
+      var den = num + L.likelihoodSeabass * stats.priorSeabass;
+      return den > 0 ? num / den : 0.5;
+    }
+    function bayesPredict(length, brightness) {
+      return bayesPosteriorSalmon(length, brightness) >= 0.5 ? "salmon" : "seabass";
+    }
+
+    function trainLogistic(arr, stdzParam, iters, lr) {
+      var w1 = 0, w2 = 0, b = 0;
+      var n = arr.length;
+      for (var it = 0; it < iters; it++) {
+        var gw1 = 0, gw2 = 0, gb = 0;
+        for (var i = 0; i < n; i++) {
+          var s = arr[i];
+          var zLen = (s.length - stdzParam.meanLen) / stdzParam.sdLen;
+          var zBri = (s.brightness - stdzParam.meanBri) / stdzParam.sdBri;
+          var y = s.species === "salmon" ? 1 : 0;
+          var pred = 1 / (1 + Math.exp(-(w1 * zLen + w2 * zBri + b)));
+          var err = pred - y;
+          gw1 += err * zLen; gw2 += err * zBri; gb += err;
+        }
+        w1 -= lr * gw1 / n; w2 -= lr * gw2 / n; b -= lr * gb / n;
+      }
+      return { w1: w1, w2: w2, b: b };
+    }
+    function computeLogisticZ(model, stdzParam, length, brightness) {
+      var zLen = (length - stdzParam.meanLen) / stdzParam.sdLen;
+      var zBri = (brightness - stdzParam.meanBri) / stdzParam.sdBri;
+      return model.w1 * zLen + model.w2 * zBri + model.b;
+    }
+    function logisticZ(length, brightness) { return computeLogisticZ(logisticModel, stdz, length, brightness); }
+    function logisticPosteriorSalmon(length, brightness) {
+      return 1 / (1 + Math.exp(-logisticZ(length, brightness)));
+    }
+    function logisticPredict(length, brightness) {
+      return logisticPosteriorSalmon(length, brightness) >= 0.5 ? "salmon" : "seabass";
+    }
+    function populationPredict(length, brightness) {
+      var z = computeLogisticZ(populationModel, popStdz, length, brightness);
+      return (1 / (1 + Math.exp(-z))) >= 0.5 ? "salmon" : "seabass";
+    }
+
+    function errorRate(predictFn) {
+      var wrong = 0;
+      samples.forEach(function (s) { if (predictFn(s.length, s.brightness) !== s.species) wrong++; });
+      return (wrong / samples.length) * 100;
+    }
+
+    // ---------- scatter plot geometry (main plot + axis-aligned marginals) ----------
+    var GEOM = { left: 66, right: 460, top: 14, bottom: 306 };
+    var LEN_STRIP_BASE_Y = 372, LEN_STRIP_PEAK_Y = 312;   // length-likelihood strip below the plot
+    var BRI_STRIP_BASE_X = 468, BRI_STRIP_PEAK_X = 528;   // brightness-likelihood strip right of the plot
+
+    function xScale(length) { return GEOM.left + (length - LEN_MIN) / (LEN_MAX - LEN_MIN) * (GEOM.right - GEOM.left); }
+    function yScale(brightness) { return GEOM.bottom - (brightness - BRI_MIN) / (BRI_MAX - BRI_MIN) * (GEOM.bottom - GEOM.top); }
+    function invX(px) { return LEN_MIN + (px - GEOM.left) / (GEOM.right - GEOM.left) * (LEN_MAX - LEN_MIN); }
+    function invY(py) { return BRI_MIN + (GEOM.bottom - py) / (GEOM.bottom - GEOM.top) * (BRI_MAX - BRI_MIN); }
+
+    function classColor(cls) { return cls === "salmon" ? "var(--salmon)" : "var(--seabass)"; }
+
+    var svgNS = "http://www.w3.org/2000/svg";
+
+    function renderAxes() {
+      el.axesGroup.innerHTML = "";
+      var lenTicks = [20, 40, 60, 80, 100];
+      var briTicks = [0, 20, 40, 60, 80, 100];
+      lenTicks.forEach(function (v) {
+        var x = xScale(v);
+        var line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", x); line.setAttribute("x2", x);
+        line.setAttribute("y1", GEOM.top); line.setAttribute("y2", GEOM.bottom);
+        line.setAttribute("stroke", "var(--border)"); line.setAttribute("stroke-width", "1"); line.setAttribute("opacity", "0.5");
+        el.axesGroup.appendChild(line);
+        var text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", x); text.setAttribute("y", LEN_STRIP_BASE_Y + 14);
+        text.setAttribute("font-size", "10"); text.setAttribute("fill", "var(--text-muted)");
+        text.setAttribute("text-anchor", "middle"); text.textContent = v;
+        el.axesGroup.appendChild(text);
+      });
+      briTicks.forEach(function (v) {
+        var y = yScale(v);
+        var line = document.createElementNS(svgNS, "line");
+        line.setAttribute("x1", GEOM.left); line.setAttribute("x2", GEOM.right);
+        line.setAttribute("y1", y); line.setAttribute("y2", y);
+        line.setAttribute("stroke", "var(--border)"); line.setAttribute("stroke-width", "1"); line.setAttribute("opacity", "0.5");
+        el.axesGroup.appendChild(line);
+        var text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", GEOM.left - 8); text.setAttribute("y", y + 3);
+        text.setAttribute("font-size", "10"); text.setAttribute("fill", "var(--text-muted)");
+        text.setAttribute("text-anchor", "end"); text.textContent = v;
+        el.axesGroup.appendChild(text);
+      });
+      var xLabel = document.createElementNS(svgNS, "text");
+      xLabel.setAttribute("x", (GEOM.left + GEOM.right) / 2); xLabel.setAttribute("y", LEN_STRIP_BASE_Y + 32);
+      xLabel.setAttribute("font-size", "11"); xLabel.setAttribute("fill", "var(--text-secondary)");
+      xLabel.setAttribute("text-anchor", "middle"); xLabel.textContent = "ความยาว (ซม.) — เส้นด้านล่างคือ likelihood ต่อความยาว";
+      el.axesGroup.appendChild(xLabel);
+      var yLabel = document.createElementNS(svgNS, "text");
+      yLabel.setAttribute("x", -((GEOM.top + GEOM.bottom) / 2)); yLabel.setAttribute("y", 14);
+      yLabel.setAttribute("font-size", "11"); yLabel.setAttribute("fill", "var(--text-secondary)");
+      yLabel.setAttribute("text-anchor", "middle"); yLabel.setAttribute("transform", "rotate(-90)");
+      yLabel.textContent = "ความสว่างผิว";
+      el.axesGroup.appendChild(yLabel);
+      var yMarginLabel = document.createElementNS(svgNS, "text");
+      yMarginLabel.setAttribute("x", (BRI_STRIP_BASE_X + BRI_STRIP_PEAK_X) / 2); yMarginLabel.setAttribute("y", GEOM.bottom + 16);
+      yMarginLabel.setAttribute("font-size", "9.5"); yMarginLabel.setAttribute("fill", "var(--text-muted)");
+      yMarginLabel.setAttribute("text-anchor", "middle");
+      yMarginLabel.textContent = "likelihood: สว่าง";
+      el.axesGroup.appendChild(yMarginLabel);
+    }
+
+    // ---------- marginal likelihood curves, on the scatter's own axes ----------
+    function buildXMarginalArea(mean, sd, maxPdf) {
+      var pts = [];
+      for (var i = 0; i <= 100; i += 2) {
+        var val = LEN_MIN + (i / 100) * (LEN_MAX - LEN_MIN);
+        var px = xScale(val);
+        var pdf = gaussianPdf(val, mean, sd);
+        var py = LEN_STRIP_BASE_Y - (pdf / maxPdf) * (LEN_STRIP_BASE_Y - LEN_STRIP_PEAK_Y);
+        pts.push([px, py]);
+      }
+      var d = "M" + pts[0][0].toFixed(1) + "," + LEN_STRIP_BASE_Y.toFixed(1) + " ";
+      pts.forEach(function (p) { d += "L" + p[0].toFixed(1) + "," + p[1].toFixed(1) + " "; });
+      d += "L" + pts[pts.length - 1][0].toFixed(1) + "," + LEN_STRIP_BASE_Y.toFixed(1) + " Z";
+      return d;
+    }
+    function buildYMarginalArea(mean, sd, maxPdf) {
+      var pts = [];
+      for (var i = 0; i <= 100; i += 2) {
+        var val = BRI_MIN + (i / 100) * (BRI_MAX - BRI_MIN);
+        var py = yScale(val);
+        var pdf = gaussianPdf(val, mean, sd);
+        var px = BRI_STRIP_BASE_X + (pdf / maxPdf) * (BRI_STRIP_PEAK_X - BRI_STRIP_BASE_X);
+        pts.push([px, py]);
+      }
+      var d = "M" + BRI_STRIP_BASE_X.toFixed(1) + "," + pts[0][1].toFixed(1) + " ";
+      pts.forEach(function (p) { d += "L" + p[0].toFixed(1) + "," + p[1].toFixed(1) + " "; });
+      d += "L" + BRI_STRIP_BASE_X.toFixed(1) + "," + pts[pts.length - 1][1].toFixed(1) + " Z";
+      return d;
+    }
+    function marginalPath(d, color) {
+      var p = document.createElementNS(svgNS, "path");
+      p.setAttribute("d", d);
+      p.setAttribute("fill", color);
+      p.setAttribute("fill-opacity", "0.22");
+      p.setAttribute("stroke", color);
+      p.setAttribute("stroke-width", "1.75");
+      p.setAttribute("stroke-linejoin", "round");
+      return p;
+    }
+    function renderMarginals() {
+      el.marginalGroup.innerHTML = "";
+      var frag = document.createDocumentFragment();
+
+      var baseLineX = document.createElementNS(svgNS, "line");
+      baseLineX.setAttribute("x1", GEOM.left); baseLineX.setAttribute("x2", GEOM.right);
+      baseLineX.setAttribute("y1", LEN_STRIP_BASE_Y); baseLineX.setAttribute("y2", LEN_STRIP_BASE_Y);
+      baseLineX.setAttribute("stroke", "var(--border)"); baseLineX.setAttribute("stroke-width", "1");
+      frag.appendChild(baseLineX);
+      var baseLineY = document.createElementNS(svgNS, "line");
+      baseLineY.setAttribute("x1", BRI_STRIP_BASE_X); baseLineY.setAttribute("x2", BRI_STRIP_BASE_X);
+      baseLineY.setAttribute("y1", GEOM.top); baseLineY.setAttribute("y2", GEOM.bottom);
+      baseLineY.setAttribute("stroke", "var(--border)"); baseLineY.setAttribute("stroke-width", "1");
+      frag.appendChild(baseLineY);
+
+      var lenMaxPdf = Math.max(
+        gaussianPdf(stats.salmon.length.mean, stats.salmon.length.mean, stats.salmon.length.sd),
+        gaussianPdf(stats.seabass.length.mean, stats.seabass.length.mean, stats.seabass.length.sd)
+      );
+      frag.appendChild(marginalPath(buildXMarginalArea(stats.salmon.length.mean, stats.salmon.length.sd, lenMaxPdf), "var(--salmon)"));
+      frag.appendChild(marginalPath(buildXMarginalArea(stats.seabass.length.mean, stats.seabass.length.sd, lenMaxPdf), "var(--seabass)"));
+
+      var briMaxPdf = Math.max(
+        gaussianPdf(stats.salmon.brightness.mean, stats.salmon.brightness.mean, stats.salmon.brightness.sd),
+        gaussianPdf(stats.seabass.brightness.mean, stats.seabass.brightness.mean, stats.seabass.brightness.sd)
+      );
+      frag.appendChild(marginalPath(buildYMarginalArea(stats.salmon.brightness.mean, stats.salmon.brightness.sd, briMaxPdf), "var(--salmon)"));
+      frag.appendChild(marginalPath(buildYMarginalArea(stats.seabass.brightness.mean, stats.seabass.brightness.sd, briMaxPdf), "var(--seabass)"));
+
+      el.marginalGroup.appendChild(frag);
+    }
+
+    var GRID_COLS = 42, GRID_ROWS = 30;
+    function renderMesh(predictFn) {
+      el.meshGroup.innerHTML = "";
+      var cellW = (GEOM.right - GEOM.left) / GRID_COLS;
+      var cellH = (GEOM.bottom - GEOM.top) / GRID_ROWS;
+      var frag = document.createDocumentFragment();
+      for (var r = 0; r < GRID_ROWS; r++) {
+        for (var c = 0; c < GRID_COLS; c++) {
+          var cx = GEOM.left + (c + 0.5) * cellW;
+          var cy = GEOM.top + (r + 0.5) * cellH;
+          var cls = predictFn(invX(cx), invY(cy));
+          var rect = document.createElementNS(svgNS, "rect");
+          rect.setAttribute("x", (GEOM.left + c * cellW).toFixed(1));
+          rect.setAttribute("y", (GEOM.top + r * cellH).toFixed(1));
+          rect.setAttribute("width", (cellW + 0.5).toFixed(1));
+          rect.setAttribute("height", (cellH + 0.5).toFixed(1));
+          rect.setAttribute("fill", classColor(cls));
+          rect.setAttribute("opacity", "0.15");
+          frag.appendChild(rect);
+        }
+      }
+      el.meshGroup.appendChild(frag);
+    }
+
+    function traceBoundary(predictFn) {
+      var rows = 70, steps = 160;
+      var pts = [];
+      for (var i = 0; i <= rows; i++) {
+        var py = GEOM.top + (i / rows) * (GEOM.bottom - GEOM.top);
+        var brightness = invY(py);
+        var prevCls = null, crossingX = null;
+        for (var j = 0; j <= steps; j++) {
+          var px = GEOM.left + (j / steps) * (GEOM.right - GEOM.left);
+          var length = invX(px);
+          var cls = predictFn(length, brightness);
+          if (prevCls && cls !== prevCls) { crossingX = px; break; }
+          prevCls = cls;
+        }
+        if (crossingX !== null) pts.push([crossingX, py]);
+      }
+      if (pts.length < 2) return "";
+      return pts.map(function (p, idx) { return (idx === 0 ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ");
+    }
+
+    function renderPopulationPoints() {
+      el.populationGroup.innerHTML = "";
+      var frag = document.createDocumentFragment();
+      populationPoints.forEach(function (p) {
+        var c = document.createElementNS(svgNS, "circle");
+        c.setAttribute("cx", xScale(p.length).toFixed(1));
+        c.setAttribute("cy", yScale(p.brightness).toFixed(1));
+        c.setAttribute("r", "2.1");
+        c.setAttribute("fill", "none");
+        c.setAttribute("stroke", p.species === "salmon" ? "var(--pop-salmon)" : "var(--pop-seabass)");
+        c.setAttribute("stroke-width", "1");
+        c.setAttribute("opacity", "0.5");
+        frag.appendChild(c);
+      });
+      el.populationGroup.appendChild(frag);
+    }
+
+    function renderPoints() {
+      el.pointsGroup.innerHTML = "";
+      var frag = document.createDocumentFragment();
+      samples.forEach(function (s) {
+        var c = document.createElementNS(svgNS, "circle");
+        c.setAttribute("cx", xScale(s.length).toFixed(1));
+        c.setAttribute("cy", yScale(s.brightness).toFixed(1));
+        c.setAttribute("r", "4.2");
+        c.setAttribute("fill", classColor(s.species));
+        c.setAttribute("stroke", "var(--surface)");
+        c.setAttribute("stroke-width", "1.2");
+        var title = document.createElementNS(svgNS, "title");
+        title.textContent = (s.species === "salmon" ? "Salmon" : "Seabass") +
+          " · ยาว " + fmt(s.length) + "cm · สว่าง " + fmt(s.brightness);
+        c.appendChild(title);
+        frag.appendChild(c);
+      });
+      el.pointsGroup.appendChild(frag);
+    }
+
+    function renderTestFishMarker(length, brightness) {
+      el.testFishMarker.innerHTML = "";
+      var x = xScale(length), y = yScale(brightness);
+      var d = "M " + x + "," + (y - 7) + " L " + (x + 7) + "," + y + " L " + x + "," + (y + 7) + " L " + (x - 7) + "," + y + " Z";
+      var shape = document.createElementNS(svgNS, "path");
+      shape.setAttribute("d", d);
+      shape.setAttribute("fill", "var(--surface)");
+      shape.setAttribute("stroke", "var(--text-primary)");
+      shape.setAttribute("stroke-width", "2");
+      el.testFishMarker.appendChild(shape);
+    }
+
+    // ---------- population init (computed once — population is fixed) ----------
+    function initPopulation() {
+      var allLen = populationPoints.map(function (d) { return d.length; });
+      var allBri = populationPoints.map(function (d) { return d.brightness; });
+      var lenStat = meanSd(allLen), briStat = meanSd(allBri);
+      popStdz = { meanLen: lenStat.mean, sdLen: lenStat.sd, meanBri: briStat.mean, sdBri: briStat.sd };
+      populationModel = trainLogistic(populationPoints, popStdz, 900, 0.4);
+      renderPopulationPoints();
+      el.populationBoundary.setAttribute("d", traceBoundary(populationPredict));
+    }
+
+    // ---------- top-level render ----------
+    function getMode() {
+      return document.querySelector('input[name="clsMode"]:checked').value;
+    }
+
+    function regenerateData() {
+      var n = Number(el.sampleSizeSlider.value);
+      samples = sampleFromPopulation(n);
+      stats = computeStats(samples);
+
+      var allLen = samples.map(function (d) { return d.length; });
+      var allBri = samples.map(function (d) { return d.brightness; });
+      var lenStat = meanSd(allLen), briStat = meanSd(allBri);
+      stdz = { meanLen: lenStat.mean, sdLen: lenStat.sd, meanBri: briStat.mean, sdBri: briStat.sd };
+      logisticModel = trainLogistic(samples, stdz, 900, 0.4);
+
+      renderAll();
+    }
+
+    function renderAll() {
+      // sample panel
+      el.sampleSizeValue.textContent = stats.n;
+      el.txtN.textContent = stats.n;
+      el.priorSampleFill.style.width = (stats.priorSalmon * 100) + "%";
+      el.priorSampleNum.textContent = fmt(stats.priorSalmon * 100) + "%";
+      el.txtPriorSample.textContent = "P(salmon) ≈ " + fmt(stats.priorSalmon * 100) + "%";
+      el.countsLine.textContent = "ในตัวอย่าง: salmon " + stats.salmon.count + " ตัว · seabass " + stats.seabass.count + " ตัว";
+
+      // population prior is a fixed constant — the bar is always at its real
+      // width so you can visually see the sample bar converge onto it as n
+      // grows; only the exact number stays hidden until "เฉลย" is checked.
+      var reveal = el.revealToggle.checked;
+      el.priorTrueFill.style.width = (TRUE_PRIOR_SALMON * 100) + "%";
+      el.priorTrueRow.classList.toggle("dim", !reveal);
+      var gapPP = Math.abs(stats.priorSalmon * 100 - TRUE_PRIOR_SALMON * 100);
+      if (reveal) {
+        el.priorTrueNum.textContent = fmt(TRUE_PRIOR_SALMON * 100) + "%";
+        el.convergenceLine.textContent =
+          "ห่างจากค่าจริง " + fmt(gapPP) + " percentage points (n=" + stats.n + ") — ลองลาก n ขึ้นดูว่าช่องว่างนี้แคบลงไหม";
+      } else {
+        el.priorTrueNum.textContent = "•••";
+        el.convergenceLine.textContent = "ลองลาก n ขึ้น — แถบบนกับแถบล่าง (จาง ๆ) ควรค่อย ๆ ใกล้กันขึ้นเรื่อย ๆ";
+      }
+
+      // classification
+      var mode = getMode();
+      var primaryPredict = mode === "bayes" ? bayesPredict : logisticPredict;
+      renderAxes();
+      renderMesh(primaryPredict);
+      renderMarginals();
+      renderPoints();
+
+      var compareOn = el.compareToggle.checked;
+      if (compareOn) {
+        var otherPredict = mode === "bayes" ? logisticPredict : bayesPredict;
+        var d = traceBoundary(otherPredict);
+        el.compareBoundary.setAttribute("d", d);
+        el.compareBoundary.setAttribute("opacity", d ? "0.9" : "0");
+      } else {
+        el.compareBoundary.setAttribute("opacity", "0");
+      }
+      el.populationBoundary.setAttribute("opacity", el.showPopBoundary.checked ? "0.55" : "0");
+
+      var bayesErr = errorRate(bayesPredict);
+      var logisticErr = errorRate(logisticPredict);
+      el.bayesErrorFill.style.width = Math.min(bayesErr, 100) + "%";
+      el.bayesErrorNum.textContent = fmt(bayesErr) + "%";
+      el.logisticErrorFill.style.width = Math.min(logisticErr, 100) + "%";
+      el.logisticErrorNum.textContent = fmt(logisticErr) + "%";
+      el.errorRowBayes.classList.toggle("active", mode === "bayes");
+      el.errorRowLogistic.classList.toggle("active", mode === "logistic");
+      el.txtBayesError.textContent = fmt(bayesErr) + "%";
+      el.txtLogisticError.textContent = fmt(logisticErr) + "%";
+
+      // test fish
+      var testLen = Number(el.testLenSlider.value);
+      var testBri = Number(el.testBriSlider.value);
+      renderTestFishMarker(testLen, testBri);
+
+      var bayesPost = bayesPosteriorSalmon(testLen, testBri);
+      var bayesCls = bayesPost >= 0.5 ? "salmon" : "seabass";
+      el.testBayesPill.textContent = bayesCls === "salmon" ? "Salmon" : "Seabass";
+      el.testBayesPill.className = "pill " + bayesCls;
+      el.testBayesProb.textContent = fmt(Math.max(bayesPost, 1 - bayesPost) * 100) + "%";
+      el.testBayesError.textContent = fmt(Math.min(bayesPost, 1 - bayesPost) * 100) + "%";
+
+      var logisticPost = logisticPosteriorSalmon(testLen, testBri);
+      var logisticCls = logisticPost >= 0.5 ? "salmon" : "seabass";
+      el.testLogisticPill.textContent = logisticCls === "salmon" ? "Salmon" : "Seabass";
+      el.testLogisticPill.className = "pill " + logisticCls;
+      el.testLogisticProb.textContent = fmt(Math.max(logisticPost, 1 - logisticPost) * 100) + "%";
+      el.testLogisticError.textContent = fmt(Math.min(logisticPost, 1 - logisticPost) * 100) + "%";
+
+      // math panel live numbers
+      var L = bayesLikelihoods(testLen, testBri);
+      var bNum = fmtPdf(L.likelihoodSalmon) + " × " + fmt(stats.priorSalmon * 100) + "%";
+      var bDen = fmtPdf(L.likelihoodSalmon) + " × " + fmt(stats.priorSalmon * 100) + "% + " +
+                 fmtPdf(L.likelihoodSeabass) + " × " + fmt(stats.priorSeabass * 100) + "%";
+      el.bayesFormulaLive.innerHTML =
+        "<span>P(salmon | L,B) =</span><span class=\"frac\"><span class=\"num\">" + bNum +
+        "</span><span class=\"den\">" + bDen + "</span></span>";
+      el.bayesFormulaResult.textContent = "= " + fmt(bayesPost * 100) + "% → ทาย " + (bayesCls === "salmon" ? "Salmon" : "Seabass");
+
+      var z = logisticZ(testLen, testBri);
+      el.logisticFormulaLive.innerHTML =
+        "<span>σ(" + fmt(logisticModel.w1) + "·z_L + " + fmt(logisticModel.w2) + "·z_B + " + fmt(logisticModel.b) + ") = σ(" + fmt(z) + ")</span>";
+      el.logisticFormulaResult.textContent = "= " + fmt(logisticPost * 100) + "% → ทาย " + (logisticCls === "salmon" ? "Salmon" : "Seabass");
+    }
+
+    // ---------- events ----------
+    el.sampleSizeSlider.addEventListener("input", function () {
+      el.sampleSizeValue.textContent = el.sampleSizeSlider.value;
+    });
+    el.sampleSizeSlider.addEventListener("change", regenerateData);
+    el.resampleBtn.addEventListener("click", regenerateData);
+    el.revealToggle.addEventListener("change", renderAll);
+    document.querySelectorAll('input[name="clsMode"]').forEach(function (r) {
+      r.addEventListener("change", renderAll);
+    });
+    el.compareToggle.addEventListener("change", renderAll);
+    el.showPopBoundary.addEventListener("change", renderAll);
+    el.testLenSlider.addEventListener("input", function () {
+      el.testLenValue.textContent = el.testLenSlider.value;
+      renderAll();
+    });
+    el.testBriSlider.addEventListener("input", function () {
+      el.testBriValue.textContent = el.testBriSlider.value;
+      renderAll();
+    });
+    el.mathToggle.addEventListener("click", function () {
+      var show = el.mathBody.hidden;
+      el.mathBody.hidden = !show;
+      el.mathToggle.setAttribute("aria-expanded", String(show));
+      el.mathToggle.textContent = show ? "ซ่อนสูตรคำนวณ" : "แสดงสูตรคำนวณ";
+    });
+
+    initPopulation();
+    regenerateData();
+  })();
+</script>

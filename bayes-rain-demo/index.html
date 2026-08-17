@@ -1,0 +1,851 @@
+<meta charset="utf-8">
+<title>ฝนจะตกไหม — สาธิต Bayes' Theorem</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Open Graph / Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ฝนจะตกไหม — สาธิต Bayes&#x27; Theorem">
+<meta property="og:description" content="ทยอยเปิดเผยหลักฐาน (ฤดู, เวลา, เมฆ) แล้วดู prior ถูก likelihood ถ่วงน้ำหนักจนกลายเป็น posterior แบบ live">
+<meta property="og:url" content="https://punpiti.github.io/machine-learning-demos/bayes-rain-demo/">
+<meta property="og:image" content="https://punpiti.github.io/machine-learning-demos/bayes-rain-demo/og.png">
+<meta property="og:image:width" content="1731">
+<meta property="og:image:height" content="909">
+<meta property="og:site_name" content="Machine Learning Demos">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ฝนจะตกไหม — สาธิต Bayes&#x27; Theorem">
+<meta name="twitter:description" content="ทยอยเปิดเผยหลักฐาน (ฤดู, เวลา, เมฆ) แล้วดู prior ถูก likelihood ถ่วงน้ำหนักจนกลายเป็น posterior แบบ live">
+<meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/bayes-rain-demo/og.png">
+<style>
+  :root {
+    --bg: #f3f6f9;
+    --surface: #ffffff;
+    --surface-2: #e7eef4;
+    --border: #d3dee7;
+    --text-primary: #1b2530;
+    --text-secondary: #48576a;
+    --text-muted: #7c8a98;
+    --accent: #3d6fb4;
+    --accent-ink: #ffffff;
+    --rain: #3d6fb4;
+    --clear: #c98a3e;
+    --shadow: 0 1px 2px rgba(27, 37, 48, 0.06), 0 8px 24px rgba(27, 37, 48, 0.06);
+    --sky-clear-top: #cfe6f7;
+    --sky-clear-bottom: #eef7fb;
+    --sky-storm-top: #232a38;
+    --sky-storm-bottom: #454f60;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10151c;
+      --surface: #171e27;
+      --surface-2: #1f2a36;
+      --border: #2b3846;
+      --text-primary: #e8eef4;
+      --text-secondary: #b4c2cf;
+      --text-muted: #7c8a98;
+      --accent: #5a8ac8;
+      --accent-ink: #0c141d;
+      --rain: #5a8ac8;
+      --clear: #b8823a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #10151c;
+    --surface: #171e27;
+    --surface-2: #1f2a36;
+    --border: #2b3846;
+    --text-primary: #e8eef4;
+    --text-secondary: #b4c2cf;
+    --text-muted: #7c8a98;
+    --accent: #5a8ac8;
+    --accent-ink: #0c141d;
+    --rain: #5a8ac8;
+    --clear: #b8823a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+  }
+
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .hero { display: flex; flex-direction: column; gap: 10px; }
+
+  .eyebrow {
+    margin: 0;
+    font: 600 12px/1 -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    text-wrap: balance;
+    color: var(--text-primary);
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--text-secondary);
+    font-size: 16px;
+  }
+
+  section.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .narrative { padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; }
+
+  .insight {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    opacity: 0.25;
+    filter: grayscale(0.4);
+    transition: opacity 0.35s ease, filter 0.35s ease;
+  }
+  .insight.active { opacity: 1; filter: none; }
+  .insight .dot {
+    flex: none;
+    width: 8px; height: 8px;
+    margin-top: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.35s ease;
+  }
+  .insight.active .dot { background: var(--accent); }
+  .insight p { margin: 0; font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif; font-size: 16.5px; color: var(--text-primary); }
+  .insight b { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 720px) {
+    .stage { grid-template-columns: 1fr; }
+  }
+
+  .window-panel {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    min-height: 260px;
+    background: var(--surface-2);
+  }
+
+  .curtain {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(100deg, #6b5744, #6b5744 18px, #5c4a39 18px, #5c4a39 36px);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 20px;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+  }
+  .curtain p {
+    margin: 0;
+    color: #f4ece0;
+    font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-size: 15px;
+    max-width: 20ch;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+
+  .sky {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .window-panel.is-open .curtain { opacity: 0; pointer-events: none; }
+  .window-panel.is-open .sky { opacity: 1; }
+
+  .cloud {
+    position: absolute;
+    border-radius: 50%;
+    background: #ffffff;
+    filter: blur(6px);
+  }
+  .cloud.c1 { width: 130px; height: 46px; top: 30px; left: 10px; }
+  .cloud.c2 { width: 100px; height: 38px; top: 60px; left: 90px; }
+  .cloud.c3 { width: 150px; height: 50px; top: 110px; left: 40px; }
+
+  .compass {
+    position: absolute; top: 10px; right: 12px;
+    font: 600 11px/1 -apple-system, sans-serif;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  .window-caption {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.92);
+    background: linear-gradient(to top, rgba(0,0,0,0.35), transparent);
+  }
+
+  .controls-panel {
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 20px 22px;
+    max-width: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 8px; }
+
+  .control-toggle {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14.5px; font-weight: 600; color: var(--text-primary);
+    cursor: pointer; user-select: none;
+  }
+  .control-toggle input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+
+  select {
+    font: 14px -apple-system, "Segoe UI", sans-serif;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    margin-left: 27px;
+    max-width: 200px;
+  }
+  select:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .slider-row {
+    margin-left: 27px;
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0.45;
+    transition: opacity 0.25s ease;
+  }
+  .slider-row.enabled { opacity: 1; }
+  .slider-row label { font-size: 13px; color: var(--text-secondary); flex: none; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .slider-value {
+    font: 700 13px/1 ui-monospace, "SF Mono", Consolas, monospace;
+    color: var(--text-primary);
+    min-width: 3.4em; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .forecast-panel { padding: 22px 26px; display: flex; flex-direction: column; gap: 22px; }
+
+  .forecast-left { display: flex; flex-direction: column; gap: 14px; }
+  .prob-bars { display: flex; flex-direction: column; gap: 14px; }
+  .decision-box {
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .decision-text { font-size: 12.5px; color: var(--text-secondary); }
+  .decision-text b { color: var(--text-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prob-row { display: grid; grid-template-columns: 150px 1fr 64px; align-items: center; gap: 12px; }
+  .prob-label { font-size: 13.5px; color: var(--text-secondary); }
+  .prob-row.highlight .prob-label { color: var(--text-primary); font-weight: 700; }
+  .prob-bar {
+    height: 14px; border-radius: 7px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .prob-fill {
+    height: 100%;
+    border-radius: 7px 4px 4px 7px;
+    transition: width 0.4s cubic-bezier(.2,.7,.3,1);
+  }
+  .prior-fill { background: var(--text-muted); }
+  .posterior-fill { background: linear-gradient(90deg, var(--clear), var(--rain)); }
+  .prob-num {
+    font: 700 16px/1 ui-monospace, "SF Mono", Consolas, monospace;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .likelihood-chart { display: flex; flex-direction: column; gap: 8px; }
+  .likelihood-chart h3 {
+    margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); font-weight: 700;
+  }
+  svg#likelihoodSvg { width: 100%; height: auto; display: block; }
+  .chart-legend { display: flex; gap: 18px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .swatch.rain { background: var(--rain); }
+  .swatch.clear { background: var(--clear); }
+
+  .math-panel { padding: 18px 26px; }
+  .math-toggle {
+    font: 600 13.5px -apple-system, "Segoe UI", sans-serif;
+    color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .math-body { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .formula {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex-wrap: wrap;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 14px;
+    color: var(--text-primary);
+    padding: 16px;
+    background: var(--surface-2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac .num, .frac .den { padding: 2px 6px; white-space: nowrap; }
+  .frac .num { border-bottom: 1.5px solid currentColor; }
+  .formula-caption {
+    margin: 0; text-align: center; font-size: 12px; color: var(--text-muted);
+  }
+  .formula-live {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .formula-live .frac .num, .formula-live .frac .den { font-variant-numeric: tabular-nums; }
+  .formula-result {
+    margin: 0; text-align: center;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .calc-steps {
+    display: flex; flex-direction: column; gap: 2px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .calc-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+    padding: 5px 0 2px;
+  }
+  .calc-label { flex: none; min-width: 170px; color: var(--text-secondary); }
+  .calc-eq { flex: none; color: var(--text-muted); }
+  .calc-value { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .calc-hint {
+    margin: 0 0 8px; padding: 0 0 8px;
+    border-bottom: 1px dashed var(--border);
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    font-size: 12px; color: var(--text-muted); font-weight: 400;
+    line-height: 1.5;
+  }
+  .calc-row.calc-final { border-top: 1.5px solid var(--border); margin-top: 4px; padding-top: 10px; }
+  .calc-row.calc-final .calc-label,
+  .calc-row.calc-final .calc-value { color: var(--accent); font-weight: 700; }
+  .calc-row.calc-result { padding-top: 0; }
+  .calc-row.calc-result .calc-eq { min-width: 178px; text-align: right; }
+  .calc-row.calc-result .calc-value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+
+  footer {
+    text-align: center; color: var(--text-muted); font-size: 12px;
+  }
+
+  /* Wide screens (assume full-screen browser): a persistent story rail +
+     a single, compact operable column, so the whole demo fits one screen
+     with no scrolling instead of just stretching the narrow column wider. */
+  @media (min-width: 1050px) {
+    .page {
+      max-width: min(94vw, 1900px);
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      grid-template-areas:
+        "hero hero"
+        "narrative stage"
+        "narrative forecast"
+        "narrative math"
+        "footer footer";
+      gap: 14px 28px;
+      padding: 20px 32px 26px;
+    }
+    .hero { grid-area: hero; }
+    .narrative {
+      grid-area: narrative;
+      position: sticky;
+      top: 18px;
+      align-self: start;
+      max-height: calc(100vh - 36px);
+      overflow-y: auto;
+    }
+    .stage {
+      grid-area: stage;
+      grid-template-columns: minmax(200px, 300px) minmax(260px, 420px);
+      gap: 14px;
+    }
+    .window-panel { min-height: 190px; }
+    .forecast-panel {
+      grid-area: forecast;
+      display: grid;
+      grid-template-columns: minmax(220px, 320px) 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 16px 20px;
+    }
+    .math-panel { grid-area: math; padding: 14px 20px; }
+    footer { grid-area: footer; }
+  }
+
+  /* Super ultrawide (32:9 and beyond): the story rail earns a second
+     idle column of width rather than the page just growing empty
+     side margins. */
+  @media (min-width: 1900px) {
+    .page { grid-template-columns: 420px 1fr; }
+  }
+
+  /* Small phones: tighten padding/gaps so more fits without feeling cramped */
+  @media (max-width: 480px) {
+    .page { padding: 22px 14px 48px; gap: 18px; }
+    .narrative, .forecast-panel, .math-panel { padding: 16px 16px; }
+    .controls-panel { padding: 16px 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <p class="eyebrow">01204483 Image Processing — Topic 02, CV + ML Intro</p>
+    <h1>ฝนจะตกไหม ใน 1 ชั่วโมงข้างหน้า?</h1>
+    <p class="lede">
+      สาธิต Bayes' theorem ผ่านสถานการณ์ทายฝน — ค่อย ๆ เปิดเผยข้อมูล (ฤดู,
+      เวลา, เมฆที่เห็นจากหน้าต่าง) แล้วดูว่าความเชื่อ (prior) ถูก evidence
+      (likelihood) ถ่วงน้ำหนักจนกลายเป็น posterior ได้อย่างไร
+    </p>
+  </header>
+
+  <section class="card narrative">
+    <div class="insight active" id="insight0">
+      <span class="dot"></span>
+      <p>
+        คุณอยู่ในห้องที่ไม่มีหน้าต่าง ไม่รู้ด้วยซ้ำว่าตอนนี้เป็นฤดูอะไรหรือ
+        เวลาไหนของวัน สิ่งเดียวที่มีคือสถิติทั่วไปว่า ตลอดทั้งปีฝนไม่ตก
+        ราว 95% ของเวลา — เชื่อว่าฝนจะตกเพียง <b id="txtBase">5%</b>
+      </p>
+    </div>
+    <div class="insight" id="insight1">
+      <span class="dot"></span>
+      <p>
+        รู้ว่าตอนนี้เป็น<b id="txtSeasonName">—</b> — prior
+        เปลี่ยนจากค่าฐานทันที เพราะสถิติฝนของแต่ละฤดูไม่เท่ากัน กลายเป็น
+        <b id="txtSeasonPrior">—</b>
+      </p>
+    </div>
+    <div class="insight" id="insight2">
+      <span class="dot"></span>
+      <p>
+        รู้เพิ่มว่าเป็นช่วง<b id="txtTimeName">—</b> — prior ปรับละเอียดขึ้น
+        อีกชั้น เป็น <b id="txtTimePrior">—</b> นี่ยังเป็นแค่ prior
+        knowledge ล้วน ๆ ยังไม่เห็นหลักฐานอะไรเลย
+      </p>
+    </div>
+    <div class="insight" id="insight3">
+      <span class="dot"></span>
+      <p>
+        เปิดหน้าต่าง เห็นเมฆทางทิศตะวันตก — นี่คือ <b>likelihood</b>
+        ยิ่งเมฆเข้มเท่าไหร่ โอกาสที่จะเห็นแบบนี้ "ถ้าฝนจะตก" ก็ยิ่งสูงกว่า
+        โอกาสที่จะเห็นแบบนี้ "ถ้าฝนจะไม่ตก" มากขึ้นเรื่อย ๆ Bayes
+        ถ่วงน้ำหนักระหว่าง prior กับ likelihood นี้ ได้ความเชื่อสุดท้ายเป็น
+        <b id="txtPosterior">—</b>
+      </p>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="window-panel" id="windowPanel">
+      <div class="curtain">
+        <p>หน้าต่างปิดอยู่ — ยังไม่มีอะไรให้เห็น</p>
+      </div>
+      <div class="sky" id="sky">
+        <span class="compass">W →</span>
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="cloud c3"></div>
+      </div>
+      <div class="window-caption" id="windowCaption">ห้องปิด · ไม่รู้ฤดู · ไม่รู้เวลา</div>
+    </div>
+
+    <div class="controls-panel">
+      <div class="control-group">
+        <label class="control-toggle">
+          <input type="checkbox" id="toggleSeason" />
+          <span>รู้ฤดูกาล</span>
+        </label>
+        <select id="seasonSelect" disabled>
+          <option value="rainy">ฤดูฝน</option>
+          <option value="hot">ฤดูร้อน</option>
+          <option value="cool">ฤดูหนาว</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-toggle">
+          <input type="checkbox" id="toggleTime" />
+          <span>รู้ช่วงเวลาของวัน</span>
+        </label>
+        <select id="timeSelect" disabled>
+          <option value="morning">เช้า</option>
+          <option value="afternoon" selected>บ่าย</option>
+          <option value="evening">เย็น</option>
+          <option value="night">ดึก</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-toggle">
+          <input type="checkbox" id="toggleWindow" />
+          <span>เปิดหน้าต่างมองออกไป</span>
+        </label>
+        <div class="slider-row" id="sliderRow">
+          <label for="darknessSlider">ความมืดของเมฆ</label>
+          <input type="range" id="darknessSlider" min="0" max="100" value="50" disabled />
+          <span class="slider-value" id="darknessValue">50%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card forecast-panel">
+    <div class="forecast-left">
+      <div class="prob-bars">
+        <div class="prob-row">
+          <span class="prob-label">Prior — ก่อนเห็นเมฆ</span>
+          <div class="prob-bar"><div class="prob-fill prior-fill" id="priorFill" style="width:5%"></div></div>
+          <span class="prob-num" id="priorNum">5%</span>
+        </div>
+        <div class="prob-row highlight">
+          <span class="prob-label">Posterior — หลังเห็นเมฆ</span>
+          <div class="prob-bar"><div class="prob-fill posterior-fill" id="posteriorFill" style="width:5%"></div></div>
+          <span class="prob-num" id="posteriorNum">5%</span>
+        </div>
+      </div>
+
+      <div class="decision-box">
+        <span class="decision-text">ตัดสินใจ (posterior ≥ 50%): <b id="decisionLabel">—</b></span>
+        <span class="decision-text">โอกาสที่การตัดสินใจนี้ผิด (decision error): <b id="decisionError">—</b></span>
+      </div>
+    </div>
+
+    <div class="likelihood-chart">
+      <h3>Likelihood — โอกาสเห็นเมฆเข้มระดับนี้ ขึ้นกับว่าฝนจะตกหรือไม่</h3>
+      <svg id="likelihoodSvg" viewBox="0 0 400 182" preserveAspectRatio="xMidYMid meet">
+        <line x1="20" y1="150" x2="380" y2="150" stroke="var(--border)" stroke-width="1" />
+        <path id="curveRain" fill="none" stroke="var(--rain)" stroke-width="2" stroke-linecap="round" />
+        <path id="curveClear" fill="none" stroke="var(--clear)" stroke-width="2" stroke-linecap="round" />
+        <line id="marker" x1="20" y1="20" x2="20" y2="150" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="3,3" />
+        <circle id="dotRain" r="4" fill="var(--rain)" />
+        <circle id="dotClear" r="4" fill="var(--clear)" />
+        <g stroke="var(--border)" stroke-width="1">
+          <line x1="20" y1="150" x2="20" y2="155" />
+          <line x1="200" y1="150" x2="200" y2="155" />
+          <line x1="380" y1="150" x2="380" y2="155" />
+        </g>
+        <g font-size="10" fill="var(--text-muted)" text-anchor="middle">
+          <text x="20" y="166">0% (สว่าง)</text>
+          <text x="200" y="166">50%</text>
+          <text x="380" y="166">100% (มืดครึ้ม)</text>
+        </g>
+        <text x="200" y="179" font-size="10.5" fill="var(--text-secondary)" text-anchor="middle">แกน X = ความมืดของเมฆที่เห็น (%) — ค่าเดียวกับสไลเดอร์ "ความมืดของเมฆ"</text>
+      </svg>
+      <div class="chart-legend">
+        <span class="legend-item"><i class="swatch rain"></i>โอกาสเห็นแบบนี้ ถ้าฝนจะตก</span>
+        <span class="legend-item"><i class="swatch clear"></i>โอกาสเห็นแบบนี้ ถ้าฝนจะไม่ตก</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card math-panel">
+    <button class="math-toggle" id="mathToggle" aria-expanded="false">แสดงสูตรคำนวณ (Bayes' theorem)</button>
+    <div class="math-body" id="mathBody" hidden>
+      <p class="formula-caption">อัปเดตทุกครั้งที่เปลี่ยน parameter (season / เวลา / ความมืดของเมฆ):</p>
+      <div class="calc-steps">
+        <div class="calc-row">
+          <span class="calc-label">Prior Knowledge</span><span class="calc-eq">=</span>
+          <span class="calc-value" id="calcPrior">—</span>
+        </div>
+        <p class="calc-hint">ความเชื่อเริ่มต้นว่าฝนจะตก ก่อนเห็นเมฆ (จากฤดู/เวลาที่รู้ ถ้ายังไม่รู้อะไรเลยก็คือค่าฐาน 5%)</p>
+
+        <div class="calc-row">
+          <span class="calc-label">Likelihood</span><span class="calc-eq">=</span>
+          <span class="calc-value" id="calcLikelihood">—</span>
+        </div>
+        <p class="calc-hint">ถ้าสมมุติว่าฝนจะตกจริง โอกาสที่จะเห็นเมฆเข้ม/สว่างระดับนี้มีมากแค่ไหน — L(เมฆ | ฝนตก)</p>
+
+        <div class="calc-row">
+          <span class="calc-label">Evidence probability</span><span class="calc-eq">=</span>
+          <span class="calc-value" id="calcEvidence">—</span>
+        </div>
+        <p class="calc-hint">
+          โอกาสที่จะเห็นเมฆแบบนี้เฉย ๆ โดย<b>ไม่สนใจ</b>ว่าฝนจะตกหรือไม่ — รวมทั้งสองความเป็นไปได้เข้าด้วยกัน
+          ("ฝนตกแล้วเห็นแบบนี้" บวกกับ "ฝนไม่ตกแล้วเห็นแบบนี้" ถ่วงน้ำหนักด้วย prior ของแต่ละฝั่ง)
+          ใช้เป็นตัวหารเพื่อ normalize ให้ posterior รวมกันได้ 100%
+        </p>
+        <div class="calc-row calc-final">
+          <span class="calc-label">Posterior</span><span class="calc-eq">=</span>
+          <span class="calc-value">Prior × Likelihood / Evidence probability = <span id="calcSubstituted">—</span></span>
+        </div>
+        <div class="calc-row calc-result">
+          <span class="calc-eq">=</span><span class="calc-value" id="calcPosteriorValue">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    ตัวเลข prior/likelihood ในสาธิตนี้เป็นค่าสมมติเพื่อการสอน ไม่ใช่สถิติภูมิอากาศจริง
+    <br><span style="opacity:.75;">Punpiti Piamsa-nga · Department of Computer Engineering, Kasetsart University</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var priorTable = {
+      rainy: { morning: 20, afternoon: 45, evening: 30, night: 10 },
+      hot:   { morning: 5,  afternoon: 15, evening: 8,  night: 2 },
+      cool:  { morning: 2,  afternoon: 5,  evening: 3,  night: 1 }
+    };
+    var seasonNames = { rainy: "ฤดูฝน", hot: "ฤดูร้อน", cool: "ฤดูหนาว" };
+    var timeNames = { morning: "เช้า", afternoon: "บ่าย", evening: "เย็น", night: "ดึก" };
+
+    var BASE_PRIOR = 5;
+    var RAIN_MEAN = 68, RAIN_SD = 16;
+    var CLEAR_MEAN = 28, CLEAR_SD = 20;
+
+    var el = {};
+    ["toggleSeason", "seasonSelect", "toggleTime", "timeSelect", "toggleWindow",
+     "sliderRow", "darknessSlider", "darknessValue",
+     "windowPanel", "sky", "windowCaption",
+     "priorFill", "priorNum", "posteriorFill", "posteriorNum", "decisionLabel", "decisionError",
+     "curveRain", "curveClear", "marker", "dotRain", "dotClear",
+     "insight0", "insight1", "insight2", "insight3",
+     "txtBase", "txtSeasonName", "txtSeasonPrior", "txtTimeName", "txtTimePrior", "txtPosterior",
+     "mathToggle", "mathBody",
+     "calcPrior", "calcLikelihood", "calcEvidence", "calcSubstituted", "calcPosteriorValue"
+    ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+    function average(arr) { return arr.reduce(function (a, b) { return a + b; }, 0) / arr.length; }
+
+    function gaussianPdf(x, mean, sd) {
+      var z = (x - mean) / sd;
+      return Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI));
+    }
+
+    function computePrior(state) {
+      if (!state.seasonKnown && !state.timeKnown) return BASE_PRIOR;
+      if (state.seasonKnown && state.timeKnown) return priorTable[state.season][state.time];
+      if (state.seasonKnown && !state.timeKnown) {
+        return average(Object.keys(priorTable[state.season]).map(function (k) { return priorTable[state.season][k]; }));
+      }
+      return average(Object.keys(priorTable).map(function (s) { return priorTable[s][state.time]; }));
+    }
+
+    function computePosterior(priorPct, darkness) {
+      var p = priorPct / 100;
+      var Lr = gaussianPdf(darkness, RAIN_MEAN, RAIN_SD);
+      var Ln = gaussianPdf(darkness, CLEAR_MEAN, CLEAR_SD);
+      var den = Lr * p + Ln * (1 - p);
+      return den > 0 ? (Lr * p / den) * 100 : priorPct;
+    }
+
+    function fmt(n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ""); }
+    function fmtPdf(n) { return n.toFixed(4); }
+    function fmtFrac(n) { return n.toFixed(3); }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function hexToRgb(hex) {
+      var v = parseInt(hex.slice(1), 16);
+      return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    }
+    function rgbToCss(rgb) { return "rgb(" + rgb.map(Math.round).join(",") + ")"; }
+    function mixHex(hexA, hexB, t) {
+      var a = hexToRgb(hexA), b = hexToRgb(hexB);
+      return rgbToCss([lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]);
+    }
+
+    var SKY_CLEAR_TOP = "#cfe6f7", SKY_CLEAR_BOTTOM = "#eef7fb";
+    var SKY_STORM_TOP = "#232a38", SKY_STORM_BOTTOM = "#454f60";
+
+    function updateSky(darkness) {
+      var t = darkness / 100;
+      var top = mixHex(SKY_CLEAR_TOP, SKY_STORM_TOP, t);
+      var bottom = mixHex(SKY_CLEAR_BOTTOM, SKY_STORM_BOTTOM, t);
+      el.sky.style.background = "linear-gradient(to bottom, " + top + ", " + bottom + ")";
+      var clouds = el.sky.querySelectorAll(".cloud");
+      clouds.forEach(function (c) {
+        c.style.opacity = String(0.25 + t * 0.65);
+        c.style.background = mixHex("#ffffff", "#20242c", t * 0.85);
+      });
+    }
+
+    // Build static likelihood curves once
+    function buildCurves() {
+      var maxPdf = Math.max(gaussianPdf(RAIN_MEAN, RAIN_MEAN, RAIN_SD), gaussianPdf(CLEAR_MEAN, CLEAR_MEAN, CLEAR_SD));
+      var top = 20, bottom = 150, left = 20, right = 380;
+      function pathFor(mean, sd) {
+        var d = "";
+        for (var x = 0; x <= 100; x += 2) {
+          var px = left + (x / 100) * (right - left);
+          var pdf = gaussianPdf(x, mean, sd);
+          var py = bottom - (pdf / maxPdf) * (bottom - top);
+          d += (x === 0 ? "M" : "L") + px.toFixed(1) + "," + py.toFixed(1) + " ";
+        }
+        return d.trim();
+      }
+      el.curveRain.setAttribute("d", pathFor(RAIN_MEAN, RAIN_SD));
+      el.curveClear.setAttribute("d", pathFor(CLEAR_MEAN, CLEAR_SD));
+      return { maxPdf: maxPdf, top: top, bottom: bottom, left: left, right: right };
+    }
+    var chartGeom = buildCurves();
+
+    function updateMarker(darkness) {
+      var px = chartGeom.left + (darkness / 100) * (chartGeom.right - chartGeom.left);
+      el.marker.setAttribute("x1", px); el.marker.setAttribute("x2", px);
+      var pdfRain = gaussianPdf(darkness, RAIN_MEAN, RAIN_SD);
+      var pdfClear = gaussianPdf(darkness, CLEAR_MEAN, CLEAR_SD);
+      var yRain = chartGeom.bottom - (pdfRain / chartGeom.maxPdf) * (chartGeom.bottom - chartGeom.top);
+      var yClear = chartGeom.bottom - (pdfClear / chartGeom.maxPdf) * (chartGeom.bottom - chartGeom.top);
+      el.dotRain.setAttribute("cx", px); el.dotRain.setAttribute("cy", yRain);
+      el.dotClear.setAttribute("cx", px); el.dotClear.setAttribute("cy", yClear);
+      return { Lr: pdfRain, Ln: pdfClear };
+    }
+
+    function getState() {
+      return {
+        seasonKnown: el.toggleSeason.checked,
+        season: el.seasonSelect.value,
+        timeKnown: el.toggleTime.checked,
+        time: el.timeSelect.value,
+        windowOpen: el.toggleWindow.checked,
+        darkness: Number(el.darknessSlider.value)
+      };
+    }
+
+    function render() {
+      var state = getState();
+      var priorPct = computePrior(state);
+
+      el.priorFill.style.width = priorPct + "%";
+      el.priorNum.textContent = fmt(priorPct) + "%";
+
+      var posteriorPct = priorPct;
+      var likelihoods = updateMarker(state.darkness);
+      if (state.windowOpen) {
+        posteriorPct = computePosterior(priorPct, state.darkness);
+      }
+      el.posteriorFill.style.width = Math.max(posteriorPct, 1) + "%";
+      el.posteriorNum.textContent = fmt(posteriorPct) + "%";
+
+      // decision + decision error: given the posterior, the Bayes decision
+      // is whichever side is more likely; the chance that decision is wrong
+      // is exactly the probability mass on the other side (min of the two).
+      var willRain = posteriorPct >= 50;
+      el.decisionLabel.textContent = willRain ? "ฝนจะตก" : "ฝนจะไม่ตก";
+      el.decisionError.textContent = fmt(Math.min(posteriorPct, 100 - posteriorPct)) + "%";
+
+      // window / sky panel
+      el.windowPanel.classList.toggle("is-open", state.windowOpen);
+      if (state.windowOpen) updateSky(state.darkness);
+      var captionParts = [];
+      captionParts.push(state.seasonKnown ? seasonNames[state.season] : "ไม่รู้ฤดู");
+      captionParts.push(state.timeKnown ? timeNames[state.time] : "ไม่รู้เวลา");
+      captionParts.push(state.windowOpen ? "เมฆเข้ม " + Math.round(state.darkness) + "%" : "หน้าต่างปิด");
+      el.windowCaption.textContent = captionParts.join(" · ");
+
+      // narrative insights
+      el.insight1.classList.toggle("active", state.seasonKnown);
+      el.insight2.classList.toggle("active", state.timeKnown);
+      el.insight3.classList.toggle("active", state.windowOpen);
+
+      el.txtBase.textContent = fmt(BASE_PRIOR) + "%";
+      if (state.seasonKnown) {
+        el.txtSeasonName.textContent = seasonNames[state.season];
+        var seasonOnlyPrior = computePrior({ seasonKnown: true, season: state.season, timeKnown: false });
+        el.txtSeasonPrior.textContent = fmt(seasonOnlyPrior) + "%";
+      }
+      if (state.timeKnown) {
+        el.txtTimeName.textContent = timeNames[state.time];
+        el.txtTimePrior.textContent = fmt(priorPct) + "%";
+      }
+      if (state.windowOpen) {
+        el.txtPosterior.textContent = fmt(posteriorPct) + "%";
+      }
+
+      // math panel — Prior Knowledge / Likelihood / Evidence probability / Posterior, spelled out
+      var priorFrac = priorPct / 100;
+      var evidenceProb = likelihoods.Lr * priorFrac + likelihoods.Ln * (1 - priorFrac);
+      el.calcPrior.textContent = fmtFrac(priorFrac) + " (" + fmt(priorPct) + "%)";
+      el.calcLikelihood.textContent = fmtPdf(likelihoods.Lr) + "  [ L(เมฆ | ฝนตก) ]";
+      el.calcEvidence.textContent = fmtPdf(evidenceProb) + "  [ L(เมฆ|ฝนตก)×Prior + L(เมฆ|ไม่ตก)×(1−Prior) ]";
+      el.calcSubstituted.textContent =
+        fmtFrac(priorFrac) + " × " + fmtPdf(likelihoods.Lr) + " / " + fmtPdf(evidenceProb);
+      el.calcPosteriorValue.textContent = fmtFrac(posteriorPct / 100) + " (" + fmt(posteriorPct) + "%)";
+    }
+
+    el.toggleSeason.addEventListener("change", function () {
+      el.seasonSelect.disabled = !el.toggleSeason.checked;
+      render();
+    });
+    el.seasonSelect.addEventListener("change", render);
+    el.toggleTime.addEventListener("change", function () {
+      el.timeSelect.disabled = !el.toggleTime.checked;
+      render();
+    });
+    el.timeSelect.addEventListener("change", render);
+    el.toggleWindow.addEventListener("change", function () {
+      var open = el.toggleWindow.checked;
+      el.darknessSlider.disabled = !open;
+      el.sliderRow.classList.toggle("enabled", open);
+      render();
+    });
+    el.darknessSlider.addEventListener("input", function () {
+      el.darknessValue.textContent = el.darknessSlider.value + "%";
+      render();
+    });
+    el.mathToggle.addEventListener("click", function () {
+      var show = el.mathBody.hidden;
+      el.mathBody.hidden = !show;
+      el.mathToggle.setAttribute("aria-expanded", String(show));
+      el.mathToggle.textContent = show ? "ซ่อนสูตรคำนวณ" : "แสดงสูตรคำนวณ (Bayes' theorem)";
+    });
+
+    render();
+  })();
+</script>

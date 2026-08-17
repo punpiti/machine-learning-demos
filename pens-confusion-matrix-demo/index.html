@@ -1,0 +1,808 @@
+<meta charset="utf-8">
+<title>ปากกาในกล่อง — TP, FP, TN, FN, Recall, Precision</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- Open Graph / Social sharing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ปากกาในกล่อง — TP, FP, TN, FN, Recall, Precision">
+<meta property="og:description" content="Dataset → Query → คลิกผลจริง แล้วดู TP/FP/TN/FN, Recall, Precision คำนวณสดจากสิ่งที่เลือก">
+<meta property="og:url" content="https://punpiti.github.io/machine-learning-demos/pens-confusion-matrix-demo/">
+<meta property="og:image" content="https://punpiti.github.io/machine-learning-demos/pens-confusion-matrix-demo/og.png">
+<meta property="og:image:width" content="1731">
+<meta property="og:image:height" content="909">
+<meta property="og:site_name" content="Machine Learning Demos">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ปากกาในกล่อง — TP, FP, TN, FN, Recall, Precision">
+<meta name="twitter:description" content="Dataset → Query → คลิกผลจริง แล้วดู TP/FP/TN/FN, Recall, Precision คำนวณสดจากสิ่งที่เลือก">
+<meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/pens-confusion-matrix-demo/og.png">
+<style>
+  :root {
+    --bg: #f5f4f2;
+    --surface: #ffffff;
+    --surface-2: #edece8;
+    --border: #dcdad4;
+    --text-primary: #23221f;
+    --text-secondary: #55524a;
+    --text-muted: #8a8578;
+    --accent: #0f8a6b;
+    --accent-ink: #ffffff;
+    --pen-red: #c0392b;
+    --pen-blue: #2e5fa3;
+    --pen-black: #262626;
+    --pen-green: #5b8c1f;
+    --status-good: #0f8a6b;
+    --status-warn: #c77d22;
+    --shadow: 0 1px 2px rgba(35, 34, 31, 0.06), 0 8px 24px rgba(35, 34, 31, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15140f;
+      --surface: #1d1c17;
+      --surface-2: #27251f;
+      --border: #3a372e;
+      --text-primary: #f1efe8;
+      --text-secondary: #cac5b6;
+      --text-muted: #8a8578;
+      --accent: #2c9678;
+      --accent-ink: #0c1310;
+      --pen-red: #e0574a;
+      --pen-blue: #6c97d6;
+      --pen-black: #9a9a9a;
+      --pen-green: #8cbf4a;
+      --status-good: #2c9678;
+      --status-warn: #c08236;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15140f;
+    --surface: #1d1c17;
+    --surface-2: #27251f;
+    --border: #3a372e;
+    --text-primary: #f1efe8;
+    --text-secondary: #cac5b6;
+    --text-muted: #8a8578;
+    --accent: #2c9678;
+    --accent-ink: #0c1310;
+    --pen-red: #e0574a;
+    --pen-blue: #6c97d6;
+    --pen-black: #9a9a9a;
+    --pen-green: #8cbf4a;
+    --status-good: #2c9678;
+    --status-warn: #c08236;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-primary);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+  }
+
+  .page {
+    max-width: 1020px; margin: 0 auto; padding: 40px 20px 80px;
+    display: flex; flex-direction: column; gap: 26px;
+  }
+
+  .hero { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    margin: 0; font: 600 12px/1 -apple-system, sans-serif;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
+  }
+  h1 {
+    margin: 0; font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-weight: 600; font-size: clamp(26px, 3.6vw, 38px); text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 64ch; color: var(--text-secondary); font-size: 16px; }
+
+  section.card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+
+  .narrative { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .insight {
+    display: flex; gap: 12px; align-items: flex-start;
+    opacity: 0.28; filter: grayscale(0.4);
+    transition: opacity 0.35s ease, filter 0.35s ease;
+  }
+  .insight.active { opacity: 1; filter: none; }
+  .insight .dot {
+    flex: none; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%;
+    background: var(--border); transition: background 0.35s ease;
+  }
+  .insight.active .dot { background: var(--accent); }
+  .insight p {
+    margin: 0; font-family: Charter, "Iowan Old Style", "Noto Serif Thai", Georgia, serif;
+    font-size: 16px; color: var(--text-primary);
+  }
+  .insight b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .insight .k-good { color: var(--status-good); }
+  .insight .k-warn { color: var(--status-warn); }
+  .insight .k-accent { color: var(--accent); }
+
+  .section-title {
+    margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); font-weight: 700;
+  }
+  .section-note { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+
+  /* --- Step 1: dataset --- */
+  .step-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .color-count-row { display: grid; grid-template-columns: 100px 1fr 2.4em; gap: 12px; align-items: center; }
+  .color-label { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .pen-dot { width: 13px; height: 13px; border-radius: 50%; flex: none; border: 1.5px solid var(--border); }
+  input[type="range"] { flex: 1; accent-color: var(--accent); width: 100%; }
+  .count-value { font: 700 14px/1 ui-monospace, "SF Mono", Consolas, monospace; text-align: right; font-variant-numeric: tabular-nums; }
+  .dataset-total { font-size: 12.5px; color: var(--text-muted); }
+  .dataset-total b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  /* --- Step 2: query --- */
+  .query-options { display: flex; flex-wrap: wrap; gap: 10px; }
+  .query-chip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+    background: var(--surface-2); cursor: pointer; font-size: 13.5px; font-weight: 600;
+    color: var(--text-secondary); transition: all 0.15s ease;
+  }
+  .query-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .query-chip.checked {
+    border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  }
+  .query-summary { font-size: 13.5px; color: var(--text-secondary); }
+  .query-summary b { color: var(--accent); }
+
+  /* --- Step 3: pen chips (click = retrieved) --- */
+  .pen-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+  .pen-card {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 92px; padding: 10px 8px 8px;
+    border-radius: 12px; border: 1.5px solid var(--border);
+    background: var(--surface-2); cursor: pointer;
+    font: inherit; color: inherit; text-align: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .pen-card:hover { transform: translateY(-1px); }
+  .pen-card.retrieved {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+    border-color: var(--accent);
+  }
+  .pen-card .pen-icon { width: 30px; height: 30px; }
+  .pen-card .pen-color-name { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+  .pen-card .relevant-tag {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em;
+    padding: 1px 7px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+    color: var(--accent); visibility: hidden;
+  }
+  .pen-card.relevant .relevant-tag { visibility: visible; }
+  .pen-card .retrieved-check {
+    position: absolute; top: -6px; right: -6px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    font-size: 11px; font-weight: 700; line-height: 18px;
+    opacity: 0; transform: scale(0.6); transition: all 0.15s ease;
+  }
+  .pen-card.retrieved .retrieved-check { opacity: 1; transform: scale(1); }
+  .pen-card .cat-badge {
+    margin-top: 2px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+    padding: 1px 8px; border-radius: 6px;
+  }
+  .pen-card .cat-badge.good { background: color-mix(in srgb, var(--status-good) 20%, var(--surface)); color: var(--status-good); }
+  .pen-card .cat-badge.warn { background: color-mix(in srgb, var(--status-warn) 20%, var(--surface)); color: var(--status-warn); }
+  .pen-grid-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-muted); }
+  .pen-grid-legend .legend-key { font-weight: 700; color: var(--text-secondary); }
+
+  /* --- Step 4: summary --- */
+  .summary-panel { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+  .summary-block { display: flex; flex-direction: column; gap: 10px; }
+  .summary-block h3 { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+
+  .table-wrap { overflow-x: auto; }
+  table.by-color { border-collapse: collapse; font-size: 12.5px; }
+  table.by-color th, table.by-color td {
+    padding: 7px 12px; text-align: center; border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  table.by-color thead th { background: var(--surface-2); font-weight: 700; color: var(--text-secondary); font-size: 11px; }
+  table.by-color thead th.corner { background: transparent; border: none; }
+  table.by-color tbody th { background: var(--surface-2); font-weight: 700; color: var(--text-secondary); text-align: left; white-space: nowrap; }
+  table.by-color tbody tr.actual-positive th { color: var(--accent); }
+  table.by-color td.good { background: color-mix(in srgb, var(--status-good) 16%, var(--surface)); color: var(--status-good); font-weight: 700; }
+  table.by-color td.warn { background: color-mix(in srgb, var(--status-warn) 16%, var(--surface)); color: var(--status-warn); font-weight: 700; }
+  .th-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; border: 1px solid var(--border); }
+
+  .quad-caption { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+  .quad-grid {
+    display: grid; grid-template-columns: auto 1fr 1fr; gap: 2px;
+    background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    max-width: 420px;
+  }
+  .quad-cell { background: var(--surface); padding: 12px; }
+  .quad-corner { background: var(--surface-2); }
+  .quad-axis-label {
+    background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--text-secondary); text-align: center; padding: 8px;
+    line-height: 1.4;
+  }
+  .quad-axis-label .quad-sub { font-weight: 500; color: var(--text-muted); font-size: 10px; }
+  .quad-data { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+  .quad-data .quad-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .quad-data .quad-num { font: 700 22px/1 ui-monospace, "SF Mono", Consolas, monospace; }
+  .quad-data.good { background: color-mix(in srgb, var(--status-good) 14%, var(--surface)); }
+  .quad-data.good .quad-tag, .quad-data.good .quad-num { color: var(--status-good); }
+  .quad-data.warn { background: color-mix(in srgb, var(--status-warn) 14%, var(--surface)); }
+  .quad-data.warn .quad-tag, .quad-data.warn .quad-num { color: var(--status-warn); }
+
+  .metric-bars { display: flex; flex-direction: column; gap: 10px; }
+  .metric-row { display: grid; grid-template-columns: 150px 1fr 58px; align-items: center; gap: 10px; }
+  .metric-label { font-size: 13px; color: var(--text-secondary); }
+  .metric-bar {
+    height: 12px; border-radius: 6px; background: var(--surface-2);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .metric-fill { height: 100%; background: var(--accent); transition: width 0.4s cubic-bezier(.2,.7,.3,1); }
+  .metric-num {
+    font: 700 14px/1 ui-monospace, "SF Mono", Consolas, monospace; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .dependency-note { margin: 0; font-size: 12.5px; color: var(--text-muted); font-style: italic; }
+  .dependency-note b { color: var(--accent); font-style: normal; }
+
+  /* --- Math panel --- */
+  .math-panel { padding: 18px 24px; }
+  .math-toggle {
+    font: 600 13.5px -apple-system, sans-serif; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .math-body { margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .math-block { display: flex; flex-direction: column; gap: 8px; }
+  .math-block h4 { margin: 0; font-size: 13px; color: var(--text-secondary); font-weight: 700; }
+  .formula {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13.5px;
+    color: var(--text-primary); padding: 14px; background: var(--surface-2);
+    border-radius: 10px; border: 1px solid var(--border);
+  }
+  .formula-live { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+  .frac .num, .frac .den { padding: 2px 6px; white-space: nowrap; }
+  .frac .num { border-bottom: 1.5px solid currentColor; }
+  .formula-result {
+    margin: 0; text-align: center; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 14px; font-weight: 700; color: var(--text-primary);
+  }
+
+  footer { text-align: center; color: var(--text-muted); font-size: 12px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (max-width: 480px) {
+    .page { padding: 22px 14px 48px; gap: 18px; }
+    .narrative, .step-panel, .summary-panel, .math-panel { padding: 16px 16px; }
+  }
+
+  /* Wide screens (assume full-screen browser): sidebar rail + compact column */
+  @media (min-width: 1050px) {
+    .page {
+      max-width: min(94vw, 1900px);
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      grid-template-areas:
+        "hero hero"
+        "narrative dataset"
+        "narrative query"
+        "narrative pens"
+        "narrative summary"
+        "narrative math"
+        "footer footer";
+      gap: 14px 28px;
+      padding: 20px 32px 26px;
+    }
+    .hero { grid-area: hero; }
+    .narrative {
+      grid-area: narrative; position: sticky; top: 18px; align-self: start;
+      max-height: calc(100vh - 36px); overflow-y: auto;
+    }
+    .step-dataset { grid-area: dataset; padding: 16px 20px; }
+    .step-query { grid-area: query; padding: 16px 20px; }
+    .step-pens { grid-area: pens; padding: 16px 20px; }
+    .summary-panel {
+      grid-area: summary; padding: 16px 20px;
+      display: grid;
+      grid-template-columns: minmax(260px, 380px) minmax(280px, 1fr);
+      grid-template-areas: "bycolor quad" "bycolor metrics" "note note";
+      gap: 14px 24px;
+    }
+    .summary-panel > .summary-block.bycolor-block { grid-area: bycolor; }
+    .summary-panel > .summary-block.quad-block { grid-area: quad; }
+    .summary-panel > .metric-bars { grid-area: metrics; align-self: start; }
+    .summary-panel > .dependency-note { grid-area: note; }
+    .math-panel { grid-area: math; padding: 14px 20px; }
+    footer { grid-area: footer; }
+  }
+  @media (min-width: 1900px) {
+    .page { grid-template-columns: 420px 1fr; }
+  }
+</style>
+
+<div class="page">
+  <header class="hero">
+    <p class="eyebrow">01204483 Image Processing — Topic 02, CV + ML Intro</p>
+    <h1>ปากกาในกล่อง — TP, FP, TN, FN, Recall, Precision</h1>
+    <p class="lede">
+      สาม input: (1) มีปากกาอะไรอยู่ในกล่องจริง ๆ (dataset), (2) กำลังค้นหาสี
+      อะไร (query — เลือกได้มากกว่า 1 สี) — <b>query ก็คือคำทายอยู่แล้ว</b> เช่น
+      เลือกสีแดง ก็แปลว่าทายว่าจะได้ปากกาแดงกลับมา, (3) คลิกเลือกว่าหยิบแท่ง
+      ไหนออกมาได้บ้างจริง — ไม่ต้องทายทีละแท่งซ้ำอีกชั้น เพราะผลจริงจะบอกเอง
+      ว่าทายถูกครบไหม หรือได้สีอื่นติดมาด้วย
+    </p>
+  </header>
+
+  <section class="card narrative">
+    <div class="insight active" id="insightP0">
+      <span class="dot"></span>
+      <p>
+        Dataset คือปากกาที่มีอยู่จริงทั้งหมดในกล่อง แต่ละแท่งมีสีจริงของมัน —
+        ความจริงที่ไม่เปลี่ยนไม่ว่าจะค้นหาอะไร
+      </p>
+    </div>
+    <div class="insight active" id="insightP1">
+      <span class="dot"></span>
+      <p>
+        เลือก Query = สีที่กำลังค้นหา (เลือกได้มากกว่า 1 สี) — การเลือกนี้
+        <b class="k-accent">คือคำทายในตัวมันเองแล้ว</b>: "ฉันเชื่อว่าจะได้
+        ปากกาสีนี้กลับมา"
+      </p>
+    </div>
+    <div class="insight active" id="insightP2">
+      <span class="dot"></span>
+      <p>
+        คลิกปากกาที่ "หยิบได้จริง" — ผลจริงอาจไม่ตรงกับที่ทายไว้: อาจหยิบไม่
+        ครบทุกแท่งที่ต้องการ (พลาดไป) หรือหยิบสีอื่นติดมาด้วย (เกินมา) — ไม่
+        ต้องมีขั้นตอน "ทายสี" แยกต่างหากอีกชั้น เพราะ query
+        เป็นคำทายอยู่แล้ว
+      </p>
+    </div>
+    <div class="insight active" id="insightP3">
+      <span class="dot"></span>
+      <p>
+        ตารางแยกตามสีจริงด้านล่างจะโชว์ว่าสีไหนถูกหยิบไปกี่แท่ง (Predicted:
+        Positive) และเหลือกี่แท่ง (Predicted: Negative) — แถวที่มีป้าย
+        <b class="k-accent">accent</b> คือสีที่อยู่ใน query (Actual: Positive)
+      </p>
+    </div>
+    <div class="insight active" id="insightP4">
+      <span class="dot"></span>
+      <p>
+        ยุบตารางนั้นเหลือ TP/FP/FN/TN 2×2 ได้ Recall/Precision — ตัวเลขนี้
+        <b>ขึ้นกับ query ที่เลือกไว้เสมอ</b> ลองสลับ query โดยไม่แตะปากกาเลย
+        แล้วดูค่าทั้งหมดเปลี่ยนใหม่ทันที
+      </p>
+    </div>
+  </section>
+
+  <section class="card step-panel step-dataset">
+    <p class="section-title">1 · กำหนด Dataset — ปากกาที่มีอยู่จริงในกล่อง</p>
+    <div id="datasetRows"></div>
+    <p class="dataset-total">รวมทั้งกล่อง: <b id="datasetTotal">—</b> แท่ง</p>
+  </section>
+
+  <section class="card step-panel step-query">
+    <p class="section-title">2 · กำหนด Query — สีที่ทาย/ค้นหา (เลือกได้มากกว่า 1 สี)</p>
+    <div class="query-options" id="queryOptions"></div>
+    <p class="query-summary">Query ปัจจุบัน: <b id="querySummaryText">—</b></p>
+  </section>
+
+  <section class="card step-panel step-pens">
+    <p class="section-title">3 · กำหนด Result — คลิกปากกาที่ "หยิบได้จริง"</p>
+    <p class="section-note">
+      ป้าย "ต้องการ" = สีตรงกับ query · ปากกาที่ถูกคลิก (พื้นเข้ม + ✓) = อยู่ใน
+      result · badge สีใต้ปากกาคำนวณสดจากทั้งสองอย่าง
+    </p>
+    <div class="pen-grid" id="penGrid"></div>
+    <div class="pen-grid-legend">
+      <span><span class="legend-key">TP</span> = ต้องการ + คลิกแล้ว</span>
+      <span><span class="legend-key">FN</span> = ต้องการ แต่ไม่คลิก</span>
+      <span><span class="legend-key">FP</span> = ไม่ต้องการ แต่คลิก</span>
+      <span><span class="legend-key">TN</span> = ไม่ต้องการ + ไม่คลิก</span>
+    </div>
+  </section>
+
+  <section class="card summary-panel">
+    <p class="section-title" style="grid-column:1/-1" id="summaryTitle">4 · สรุปผล</p>
+
+    <div class="summary-block bycolor-block">
+      <h3>แยกตามสีจริง — Actual color × Predicted (หยิบ/ไม่หยิบ)</h3>
+      <div class="table-wrap">
+        <table class="by-color" id="byColorTable"></table>
+      </div>
+
+      <h3>Recall / Precision แยกตามสี (ถ้าถือว่า query = สีนั้นสีเดียว)</h3>
+      <p class="section-note">Support = จำนวนปากกาสีนั้นที่มีอยู่จริงในกล่อง (ไม่ขึ้นกับ query ที่เลือกไว้ด้านบน)</p>
+      <div class="table-wrap">
+        <table class="by-color" id="perColorTable"></table>
+      </div>
+    </div>
+
+    <div class="summary-block quad-block">
+      <h3 class="quad-caption">ยุบเหลือ 2×2 ตาม query — Actual × Predicted</h3>
+      <div class="quad-grid" id="quadGrid">
+        <div class="quad-cell quad-corner"></div>
+        <div class="quad-cell quad-axis-label">Predicted: Positive<br /><span class="quad-sub">(คลิกแล้ว)</span></div>
+        <div class="quad-cell quad-axis-label">Predicted: Negative<br /><span class="quad-sub">(ไม่ได้คลิก)</span></div>
+
+        <div class="quad-cell quad-axis-label">Actual: Positive<br /><span class="quad-sub">(ต้องการ)</span></div>
+        <div class="quad-cell quad-data good">
+          <span class="quad-tag">TP</span>
+          <span class="quad-num" id="quadTP">—</span>
+        </div>
+        <div class="quad-cell quad-data warn">
+          <span class="quad-tag">FN</span>
+          <span class="quad-num" id="quadFN">—</span>
+        </div>
+
+        <div class="quad-cell quad-axis-label">Actual: Negative<br /><span class="quad-sub">(ไม่ต้องการ)</span></div>
+        <div class="quad-cell quad-data warn">
+          <span class="quad-tag">FP</span>
+          <span class="quad-num" id="quadFP">—</span>
+        </div>
+        <div class="quad-cell quad-data good">
+          <span class="quad-tag">TN</span>
+          <span class="quad-num" id="quadTN">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="metric-bars">
+      <div class="metric-row">
+        <span class="metric-label">Recall</span>
+        <div class="metric-bar"><div class="metric-fill" id="recallFill" style="width:0%"></div></div>
+        <span class="metric-num" id="recallNum">—</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Precision</span>
+        <div class="metric-bar"><div class="metric-fill" id="precisionFill" style="width:0%"></div></div>
+        <span class="metric-num" id="precisionNum">—</span>
+      </div>
+    </div>
+
+    <p class="dependency-note" id="dependencyNote">—</p>
+  </section>
+
+  <section class="card math-panel">
+    <button class="math-toggle" id="mathToggle" aria-expanded="false">แสดงสูตรคำนวณ</button>
+    <div class="math-body" id="mathBody" hidden>
+      <div class="math-block">
+        <h4 id="mathDefTitle">นิยาม</h4>
+        <div class="formula">
+          <span>TP = Actual:Pos ∩ Predicted:Pos (ต้องการ ∩ คลิก)</span>
+          <span>FN = Actual:Pos ∩ Predicted:Neg (ต้องการ ∩ ไม่คลิก)</span>
+          <span>FP = Actual:Neg ∩ Predicted:Pos (ไม่ต้องการ ∩ คลิก)</span>
+          <span>TN = Actual:Neg ∩ Predicted:Neg (ไม่ต้องการ ∩ ไม่คลิก)</span>
+        </div>
+      </div>
+      <div class="math-block">
+        <h4 id="recallTitle">Recall — เจอกี่ % ของที่มีจริง</h4>
+        <div class="formula">
+          <span>Recall =</span>
+          <span class="frac"><span class="num">TP</span><span class="den">TP + FN</span></span>
+        </div>
+        <p class="section-note">เมื่อ query มีหลายสี — เอา TP ของแต่ละสีมาบวกกัน หารด้วย Support (TP+FN) ของแต่ละสีมาบวกกัน คือถ่วงน้ำหนัก recall ของแต่ละสีตามจำนวนจริงของสีนั้น ไม่ใช่ค่าเฉลี่ยเฉย ๆ ของ % ที่เห็นในตารางด้านบน</p>
+        <div class="formula formula-live" id="recallFormulaLive">—</div>
+        <p class="formula-result" id="recallFormulaResult">—</p>
+      </div>
+      <div class="math-block">
+        <h4 id="precisionTitle">Precision — ที่คลิกมา กี่ % ถูกจริง</h4>
+        <div class="formula">
+          <span>Precision =</span>
+          <span class="frac"><span class="num">TP</span><span class="den">TP + FP</span></span>
+        </div>
+        <p class="section-note">TP รวมจากสีใน query เหมือนกับ recall แต่ตัวหารเปลี่ยนเป็นผลรวมของทุกสีที่ถูกคลิก (หยิบแล้ว) ไม่ว่าจะอยู่ใน query หรือไม่ — เพราะของที่คลิกมาแล้วผิดสีก็นับเป็น FP ที่ฉุด precision ลง</p>
+        <div class="formula formula-live" id="precisionFormulaLive">—</div>
+        <p class="formula-result" id="precisionFormulaResult">—</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    ตัวอย่างสมมติเพื่อการสอน — Query คือ ground truth ที่ต้องการค้นหา (เหมือน
+    คำทาย), Result คือปากกาที่คลิกเลือกว่าหยิบได้จริง ซึ่งอาจผิดได้ทั้งรายงาน
+    เกิน (FP) และรายงานขาด (FN)
+    <br><span style="opacity:.75;">Punpiti Piamsa-nga · Department of Computer Engineering, Kasetsart University</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var COLORS = [
+      { key: "red",   label: "แดง",     var: "--pen-red",   defaultCount: 2 },
+      { key: "blue",  label: "น้ำเงิน", var: "--pen-blue",  defaultCount: 2 },
+      { key: "black", label: "ดำ",      var: "--pen-black", defaultCount: 1 },
+      { key: "green", label: "เขียว",   var: "--pen-green", defaultCount: 0 }
+    ];
+    var COUNT_MAX = 6;
+
+    var el = {};
+    ["datasetRows", "datasetTotal", "queryOptions", "querySummaryText",
+     "penGrid", "byColorTable", "perColorTable", "quadTP", "quadFN", "quadFP", "quadTN",
+     "recallFill", "recallNum", "precisionFill", "precisionNum",
+     "summaryTitle", "dependencyNote",
+     "mathToggle", "mathBody", "mathDefTitle", "recallTitle", "precisionTitle",
+     "recallFormulaLive", "recallFormulaResult", "precisionFormulaLive", "precisionFormulaResult"
+    ].forEach(function (id) { el[id] = document.getElementById(id); });
+
+    function fmt(n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ""); }
+    function fmtPct(n) { return n === null ? "N/A" : fmt(n * 100) + "%"; }
+    function labelOf(key) {
+      var c = COLORS.filter(function (c) { return c.key === key; })[0];
+      return c ? c.label : key;
+    }
+    function penIconSVG(colorVarName) {
+      return '<svg class="pen-icon" viewBox="0 0 40 40" aria-hidden="true">' +
+        '<g transform="rotate(45 20 20)">' +
+        '<rect x="14" y="3" width="12" height="25" rx="3" fill="var(' + colorVarName + ')" />' +
+        '<polygon points="14,28 26,28 20,38" fill="var(' + colorVarName + ')" />' +
+        '<rect x="14" y="3" width="12" height="7" rx="3" fill="#ffffff" fill-opacity="0.3" />' +
+        '</g></svg>';
+    }
+
+    // ---------- state ----------
+    var counts = {};
+    COLORS.forEach(function (c) { counts[c.key] = c.defaultCount; });
+    var queryColors = { red: true, blue: false, black: false, green: false };
+    var pens = [];       // [{id, color}]
+    var retrieved = {};  // id -> true
+
+    // ---------- step 1: dataset count sliders ----------
+    COLORS.forEach(function (c) {
+      var row = document.createElement("div");
+      row.className = "color-count-row";
+      row.innerHTML =
+        '<span class="color-label"><i class="pen-dot" style="background:var(' + c.var + ')"></i>' + c.label + '</span>' +
+        '<input type="range" min="0" max="' + COUNT_MAX + '" step="1" value="' + counts[c.key] + '" id="count_' + c.key + '" />' +
+        '<span class="count-value" id="countVal_' + c.key + '">' + counts[c.key] + '</span>';
+      el.datasetRows.appendChild(row);
+      el["count_" + c.key] = row.querySelector("#count_" + c.key);
+      el["countVal_" + c.key] = row.querySelector("#countVal_" + c.key);
+    });
+
+    // ---------- step 2: query chips ----------
+    COLORS.forEach(function (c) {
+      var label = document.createElement("label");
+      label.className = "query-chip";
+      label.id = "queryChip_" + c.key;
+      label.innerHTML =
+        '<input type="checkbox" id="query_' + c.key + '" ' + (queryColors[c.key] ? "checked" : "") + ' />' +
+        '<i class="pen-dot" style="background:var(' + c.var + ')"></i>' + c.label;
+      el.queryOptions.appendChild(label);
+      el["query_" + c.key] = document.getElementById("query_" + c.key);
+    });
+
+    // ---------- rebuild dataset pens (resets result — old ids no longer apply) ----------
+    function rebuildDataset() {
+      pens = [];
+      var id = 0;
+      COLORS.forEach(function (c) {
+        for (var i = 0; i < counts[c.key]; i++) {
+          pens.push({ id: id++, color: c.key });
+        }
+      });
+      retrieved = {};
+      if (!rebuildDataset._seeded && pens.length >= 3) {
+        retrieved[pens[0].id] = true;   // a query-color pen, retrieved
+        retrieved[pens[2].id] = true;   // a non-matching pen, retrieved -> FP
+        rebuildDataset._seeded = true;
+      }
+    }
+
+    // ---------- pen grid rendering ----------
+    function renderPenGrid() {
+      el.penGrid.innerHTML = "";
+      var frag = document.createDocumentFragment();
+      pens.forEach(function (p) {
+        var isRelevant = !!queryColors[p.color];
+        var isRetrieved = !!retrieved[p.id];
+        var cat = isRelevant ? (isRetrieved ? "TP" : "FN") : (isRetrieved ? "FP" : "TN");
+        var catClass = (cat === "TP" || cat === "TN") ? "good" : "warn";
+
+        var card = document.createElement("button");
+        card.type = "button";
+        card.className = "pen-card" + (isRelevant ? " relevant" : "") + (isRetrieved ? " retrieved" : "");
+        card.setAttribute("aria-pressed", String(isRetrieved));
+        card.innerHTML =
+          '<span class="retrieved-check">✓</span>' +
+          penIconSVG(COLORS.filter(function (c) { return c.key === p.color; })[0].var) +
+          '<span class="pen-color-name">' + labelOf(p.color) + '</span>' +
+          '<span class="relevant-tag">ต้องการ</span>' +
+          '<span class="cat-badge ' + catClass + '">' + cat + '</span>';
+        card.addEventListener("click", function () {
+          if (retrieved[p.id]) { delete retrieved[p.id]; } else { retrieved[p.id] = true; }
+          render();
+        });
+        frag.appendChild(card);
+      });
+      el.penGrid.appendChild(frag);
+    }
+
+    // ---------- by-actual-color breakdown (no per-pen predicted color needed) ----------
+    function computeByColor() {
+      var rows = {};
+      COLORS.forEach(function (c) { rows[c.key] = { total: 0, pos: 0, neg: 0 }; });
+      pens.forEach(function (p) {
+        rows[p.color].total++;
+        if (retrieved[p.id]) rows[p.color].pos++; else rows[p.color].neg++;
+      });
+      return rows;
+    }
+
+    function renderByColorTable(rows) {
+      var html = '<thead><tr><th class="corner"></th>' +
+        '<th>Predicted: Positive<br><span style="font-weight:500">(หยิบแล้ว)</span></th>' +
+        '<th>Predicted: Negative<br><span style="font-weight:500">(ยังไม่หยิบ)</span></th></tr></thead><tbody>';
+      COLORS.forEach(function (c) {
+        var r = rows[c.key];
+        var isActualPos = !!queryColors[c.key];
+        html += '<tr class="' + (isActualPos ? "actual-positive" : "") + '">' +
+          '<th><span class="th-swatch" style="background:var(' + c.var + ')"></span>' + c.label + '</th>' +
+          '<td class="' + (isActualPos ? "good" : "warn") + '">' + r.pos + '</td>' +
+          '<td class="' + (isActualPos ? "warn" : "good") + '">' + r.neg + '</td>' +
+          '</tr>';
+      });
+      html += "</tbody>";
+      el.byColorTable.innerHTML = html;
+    }
+
+    // ---------- per-color Recall/Precision, treating each color as its own
+    // one-vs-rest query (independent of whichever query is actually
+    // selected above) — support = how many of that color really exist ----------
+    function computePerColorMetrics(rows) {
+      var totalRetrieved = COLORS.reduce(function (s, c) { return s + rows[c.key].pos; }, 0);
+      var out = {};
+      COLORS.forEach(function (c) {
+        var r = rows[c.key];
+        var support = r.total;
+        var tp = r.pos;
+        out[c.key] = {
+          support: support,
+          tp: tp,
+          recall: support > 0 ? tp / support : null,
+          precision: totalRetrieved > 0 ? tp / totalRetrieved : null
+        };
+      });
+      return out;
+    }
+
+    function renderPerColorTable(perColor) {
+      var html = '<thead><tr><th class="corner"></th><th>Support<br><span style="font-weight:500">(มีจริง)</span></th>' +
+        '<th>TP<br><span style="font-weight:500">(หยิบถูก)</span></th><th>Recall</th><th>Precision</th></tr></thead><tbody>';
+      COLORS.forEach(function (c) {
+        var m = perColor[c.key];
+        html += "<tr>" +
+          '<th><span class="th-swatch" style="background:var(' + c.var + ')"></span>' + c.label + '</th>' +
+          "<td>" + m.support + "</td>" +
+          "<td>" + m.tp + "</td>" +
+          "<td>" + fmtPct(m.recall) + "</td>" +
+          "<td>" + fmtPct(m.precision) + "</td>" +
+          "</tr>";
+      });
+      html += "</tbody>";
+      el.perColorTable.innerHTML = html;
+    }
+
+    // ---------- derive 2x2 (TP/FP/FN/TN) from the by-color rows via query membership ----------
+    function computeConfusion(rows) {
+      var tp = 0, fp = 0, fn = 0, tn = 0;
+      COLORS.forEach(function (c) {
+        var r = rows[c.key];
+        if (queryColors[c.key]) { tp += r.pos; fn += r.neg; }
+        else { fp += r.pos; tn += r.neg; }
+      });
+      var recall = (tp + fn) > 0 ? tp / (tp + fn) : null;
+      var precision = (tp + fp) > 0 ? tp / (tp + fp) : null;
+      return { tp: tp, fp: fp, fn: fn, tn: tn, recall: recall, precision: precision };
+    }
+
+    function queryLabelList() {
+      var chosen = COLORS.filter(function (c) { return queryColors[c.key]; }).map(function (c) { return c.label; });
+      return chosen.length ? chosen.join(", ") : "ยังไม่ได้เลือกสีใดเลย";
+    }
+
+    function render() {
+      var total = 0;
+      COLORS.forEach(function (c) {
+        el["countVal_" + c.key].textContent = counts[c.key];
+        total += counts[c.key];
+      });
+      el.datasetTotal.textContent = total;
+
+      COLORS.forEach(function (c) {
+        document.getElementById("queryChip_" + c.key).classList.toggle("checked", queryColors[c.key]);
+      });
+      var queryText = queryLabelList();
+      el.querySummaryText.textContent = queryText;
+
+      renderPenGrid();
+
+      var rows = computeByColor();
+      renderByColorTable(rows);
+      renderPerColorTable(computePerColorMetrics(rows));
+
+      var conf = computeConfusion(rows);
+      el.quadTP.textContent = conf.tp;
+      el.quadFN.textContent = conf.fn;
+      el.quadFP.textContent = conf.fp;
+      el.quadTN.textContent = conf.tn;
+
+      el.recallFill.style.width = (conf.recall === null ? 0 : conf.recall * 100) + "%";
+      el.recallNum.textContent = fmtPct(conf.recall);
+      el.precisionFill.style.width = (conf.precision === null ? 0 : conf.precision * 100) + "%";
+      el.precisionNum.textContent = fmtPct(conf.precision);
+
+      var queryParen = "(query: " + queryText + ")";
+      el.summaryTitle.textContent = "4 · สรุปผล " + queryParen;
+      el.dependencyNote.innerHTML =
+        "ตาราง 2×2, Recall, Precision ด้านบนคำนวณจาก <b>" + queryParen + "</b> — เปลี่ยน query ที่ข้อ 2 โดยไม่แตะปากกาเลย แล้วดูค่าทั้งหมดนี้เปลี่ยนใหม่ทันที (ตารางแยกตามสียังไม่เปลี่ยน แถวไหนกลายเป็น Actual:Positive ต่างหาก)";
+
+      el.mathDefTitle.textContent = "นิยาม " + queryParen;
+      el.recallTitle.textContent = "Recall " + queryParen + " — เจอกี่ % ของที่มีจริง";
+      el.precisionTitle.textContent = "Precision " + queryParen + " — ที่คลิกมา กี่ % ถูกจริง";
+
+      // recall/precision "combined" formulas, broken down by the per-color
+      // TP/support/retrieved terms that get summed to build them — shows
+      // that combining is a support-weighted sum, not a plain average of
+      // the per-color % values in the table above.
+      var queryList = COLORS.filter(function (c) { return queryColors[c.key]; });
+      if (queryList.length === 0) {
+        el.recallFormulaLive.innerHTML = "—";
+        el.recallFormulaResult.textContent = "—";
+        el.precisionFormulaLive.innerHTML = "—";
+        el.precisionFormulaResult.textContent = "—";
+      } else {
+        var recallNumTerms = queryList.map(function (c) { return rows[c.key].pos + "(" + c.label + ")"; });
+        var recallDenTerms = queryList.map(function (c) { return rows[c.key].total + "(" + c.label + ")"; });
+        el.recallFormulaLive.innerHTML =
+          "<span>Recall =</span><span class=\"frac\"><span class=\"num\">" + recallNumTerms.join(" + ") +
+          "</span><span class=\"den\">" + recallDenTerms.join(" + ") + "</span></span>";
+        el.recallFormulaResult.textContent =
+          "= " + conf.tp + " / " + (conf.tp + conf.fn) + " = " + fmtPct(conf.recall);
+
+        var retrievedColors = COLORS.filter(function (c) { return counts[c.key] > 0; });
+        var precisionNumTerms = queryList.map(function (c) { return rows[c.key].pos + "(" + c.label + ")"; });
+        var precisionDenTerms = retrievedColors.map(function (c) { return rows[c.key].pos + "(" + c.label + ")"; });
+        el.precisionFormulaLive.innerHTML =
+          "<span>Precision =</span><span class=\"frac\"><span class=\"num\">" + precisionNumTerms.join(" + ") +
+          "</span><span class=\"den\">" + precisionDenTerms.join(" + ") + "</span></span>";
+        el.precisionFormulaResult.textContent =
+          "= " + conf.tp + " / " + (conf.tp + conf.fp) + " = " + fmtPct(conf.precision);
+      }
+    }
+
+    // ---------- events ----------
+    COLORS.forEach(function (c) {
+      el["count_" + c.key].addEventListener("input", function () {
+        counts[c.key] = Number(el["count_" + c.key].value);
+        rebuildDataset();
+        render();
+      });
+      el["query_" + c.key].addEventListener("change", function () {
+        queryColors[c.key] = el["query_" + c.key].checked;
+        render();
+      });
+    });
+    el.mathToggle.addEventListener("click", function () {
+      var show = el.mathBody.hidden;
+      el.mathBody.hidden = !show;
+      el.mathToggle.setAttribute("aria-expanded", String(show));
+      el.mathToggle.textContent = show ? "ซ่อนสูตรคำนวณ" : "แสดงสูตรคำนวณ";
+    });
+
+    rebuildDataset();
+    render();
+  })();
+</script>
