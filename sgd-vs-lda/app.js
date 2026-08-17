@@ -2,27 +2,41 @@
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
 
-  // --- Data: synthetic rain days, 2 features (cloud %, humidity %), seeded and reproducible ---
+  // --- Data: three selectable rain-day datasets, 2 features (cloud %, humidity %). "Overlapping"
+  // is the same generator (same seed, same order of operations) as activation-functions' default. ---
   function seededRandom(seed) {
     let s = seed;
     return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  const DATA = (() => {
-    const rand = seededRandom(20260817);
+  const DATASETS = {
+    overlapping: { label: "Overlapping", blurb: "The default rain data — LDA tops out at 87.5%.", seed: 20260817, counts: [12, 12], centers: [[34, 38], [66, 68]], spread: [70, 60] },
+    separable: { label: "Separable", blurb: "Classes barely overlap — most activations converge cleanly.", seed: 20260820, counts: [12, 12], centers: [[20, 20], [80, 80]], spread: [26, 26] },
+    imbalanced: { label: "Imbalanced", blurb: "19 rainy days, 5 dry — skewed class sizes change the pull.", seed: 20260821, counts: [5, 19], centers: [[34, 38], [66, 68]], spread: [70, 60] },
+  };
+  const DATASET_ORDER = ["overlapping", "separable", "imbalanced"];
+
+  function generateDataset(key) {
+    const cfg = DATASETS[key];
+    const rand = seededRandom(cfg.seed);
     const rows = [];
     let id = 0;
-    [0, 1].forEach(y => {
-      const cloudBase = y ? 66 : 34, humBase = y ? 68 : 38;
-      for (let i = 0; i < 12; i += 1) {
-        const cloud = clamp(Math.round(cloudBase + (rand() - 0.5) * 70), 2, 98);
-        const humidity = clamp(Math.round(humBase + (rand() - 0.5) * 60), 2, 98);
-        rows.push({ id: id++, cloud, humidity, y });
+    cfg.counts.forEach((count, ci) => {
+      const [cloudBase, humBase] = cfg.centers[ci];
+      const [spreadC, spreadH] = cfg.spread;
+      for (let i = 0; i < count; i += 1) {
+        const cloud = clamp(Math.round(cloudBase + (rand() - 0.5) * spreadC), 2, 98);
+        const humidity = clamp(Math.round(humBase + (rand() - 0.5) * spreadH), 2, 98);
+        rows.push({ id: id++, cloud, humidity, y: ci });
       }
     });
     return rows;
-  })();
+  }
+  const PREVIEW_DATA = {};
+  DATASET_ORDER.forEach(key => { PREVIEW_DATA[key] = generateDataset(key); });
+
+  let DATA = generateDataset("overlapping");
 
   const CLASS_COLOR = { 0: "#d58b16", 1: "#148a88" };
   const CLASS_LABEL = { 0: "No rain", 1: "Rain" };
@@ -51,7 +65,7 @@
     rows.forEach(d => { const z = w[0] * scaledX(d) + w[1] * scaledY(d) + b; if ((z >= 0 ? 1 : 0) === d.y) correct += 1; });
     return { w, b, acc: correct / rows.length };
   }
-  const LDA = fitLDA(DATA);
+  let LDA = fitLDA(DATA);
 
   // --- Activation functions: same update rule, different a(z) ---
   const ACTIVATIONS = {
@@ -85,12 +99,12 @@
     DATA.forEach(d => { const z = w1 * scaledX(d) + w2 * scaledY(d) + b; if ((z >= 0 ? 1 : 0) === d.y) correct += 1; });
     return correct / DATA.length;
   }
-  const LDA_ERROR = 1 - LDA.acc;
+  let LDA_ERROR = 1 - LDA.acc;
 
-  function freshState(activation, lr) {
-    return { activation, lr, w1: 0, w2: 0, b: 0, epoch: 1, order: shuffledOrder(1), idx: 0, stepInSample: 0, history: [], totalUpdates: 0, playing: false, autoStopReason: null, epochErrors: [{ epoch: 0, error: 1 - accuracyFor(0, 0, 0) }] };
+  function freshState(datasetKey, activation, lr) {
+    return { datasetKey, activation, lr, w1: 0, w2: 0, b: 0, epoch: 1, order: shuffledOrder(1), idx: 0, stepInSample: 0, history: [], totalUpdates: 0, playing: false, autoStopReason: null, epochErrors: [{ epoch: 0, error: 1 - accuracyFor(0, 0, 0) }] };
   }
-  let state = freshState("sigmoid", 0.5);
+  let state = freshState("overlapping", "sigmoid", 0.5);
   let playTimer = null;
 
   const currentSample = () => DATA[state.order[state.idx]];
@@ -204,7 +218,16 @@
   }
   function resetTraining() {
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    state = freshState(state.activation, state.lr);
+    state = freshState(state.datasetKey, state.activation, state.lr);
+    render();
+  }
+  function setDataset(key) {
+    if (key === state.datasetKey) return;
+    if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    DATA = generateDataset(key);
+    LDA = fitLDA(DATA);
+    LDA_ERROR = 1 - LDA.acc;
+    state = freshState(key, state.activation, state.lr);
     render();
   }
 
@@ -336,10 +359,27 @@
   // --- Panels ---
   function renderControls() {
     $$(".mode-button").forEach(btn => btn.classList.toggle("active", btn.dataset.activation === state.activation));
+    $$(".dataset-button").forEach(btn => btn.classList.toggle("active", btn.dataset.key === state.datasetKey));
     $("#lr-value").textContent = state.lr.toFixed(2);
     const autoNote = state.autoStopReason ? ` · auto-paused (${state.autoStopReason})` : "";
-    $("#status-text").textContent = `Epoch ${state.epoch} · Sample ${state.idx + 1} / ${DATA.length} · Step ${state.stepInSample} / 9${autoNote}`;
+    $("#status-text").textContent = `${DATASETS[state.datasetKey].label} · Epoch ${state.epoch} · Sample ${state.idx + 1} / ${DATA.length} · Step ${state.stepInSample} / 9${autoNote}`;
     $("#play-pause").textContent = state.playing ? "⏸ Pause" : "▶ Auto-train";
+  }
+
+  // --- Dataset picker: small static preview scatter per dataset, built once ---
+  const PREVIEW_PLOT = { size: 100, pad: 6 };
+  function previewSvg(rows) {
+    const { size, pad } = PREVIEW_PLOT;
+    const px = v => pad + (v / 100) * (size - 2 * pad);
+    const dots = rows.map(d => `<circle cx="${px(d.cloud).toFixed(1)}" cy="${(size - px(d.humidity)).toFixed(1)}" r="3" fill="${CLASS_COLOR[d.y]}" fill-opacity=".8"/>`).join("");
+    return `<svg viewBox="0 0 ${size} ${size}" class="dataset-preview" role="img" aria-hidden="true">${dots}</svg>`;
+  }
+  function initDatasetPicker() {
+    $("#dataset-picker").innerHTML = DATASET_ORDER.map(key => {
+      const cfg = DATASETS[key];
+      return `<button type="button" class="dataset-button" data-key="${key}">${previewSvg(PREVIEW_DATA[key])}<span class="dataset-name">${cfg.label}</span><span class="dataset-blurb">${cfg.blurb}</span></button>`;
+    }).join("");
+    $$(".dataset-button").forEach(btn => btn.addEventListener("click", () => setDataset(btn.dataset.key)));
   }
 
   function renderComputation(sample, steps) {
@@ -383,7 +423,7 @@
   $$(".mode-button").forEach(btn => btn.addEventListener("click", () => {
     if (btn.dataset.activation === state.activation) return;
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    state = freshState(btn.dataset.activation, state.lr);
+    state = freshState(state.datasetKey, btn.dataset.activation, state.lr);
     render();
   }));
   $("#lr-slider").addEventListener("input", e => { state.lr = Number(e.target.value); render(); });
@@ -397,5 +437,6 @@
   $("#play-pause").addEventListener("click", togglePlay);
   $("#reset-btn").addEventListener("click", resetTraining);
 
+  initDatasetPicker();
   render();
 })();

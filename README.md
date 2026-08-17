@@ -11,9 +11,11 @@ Static GitHub Pages site for course-native interactive machine-learning demonstr
 - `random-forest/` — random-forest voting lab showing bootstrap samples, random feature splits, and majority voting
 - `xgboost/` — round-by-round multi-class gradient boosting lab (2 features, 2–3 classes, one tree per class per round)
 - `parzen-knn/` — Parzen window vs. k-NN classification lab with a leave-one-out accuracy curve for window/k selection
-- `sgd-vs-lda/` — step-by-step SGD training of a linear classifier (perceptron/step or logistic/sigmoid activation, selectable) on rain data, with a live calculation trace and comparison against LDA's closed-form boundary
+- `sgd-vs-lda/` — step-by-step SGD training of a linear classifier (perceptron/step or logistic/sigmoid activation, selectable) on a selectable rain dataset (overlapping/separable/imbalanced), with a live calculation trace and comparison against LDA's closed-form boundary
 - `bayes-fish-demo/`, `bayes-rain-demo/`, `pens-confusion-matrix-demo/`, `sampling-quantization-demo/` — ported from the sibling [`image-processing-demos`](https://github.com/punpiti/image-processing-demos) repo (Bayes classification/theorem, confusion-matrix metrics, and sampling/quantization); each is a self-contained single-file page with its own design system, not the shared `shared.css`/`shared-layout.js` chrome used elsewhere in this repo
 - `data-to-decision/` — no-formulas lab for why a decision needs data: same 48 days, evidence columns (season, cloud, humidity) revealed one at a time, accuracy climbing at each stage
+- `model-selection/` — train/validation/test workflow on the Iris dataset: fit three named model families on train, pick a winner on validation, then open the test set once
+- `activation-functions/` — sigmoid/tanh/arctan/ReLU/step/linear all train simultaneously on a selectable rain dataset (same three options as `sgd-vs-lda/`), same steepness k and learning rate, error-vs-epoch overlaid on one chart, to see why a step function's zero slope freezes gradient learning while steep smooth activations oscillate or saturate — and how much of that depends on the data itself
 
 The homepage groups demos by chapter, following `~/OneDrive/book/machine-learning`'s `MASTER_OUTLINE.md` rather than either course's own week/session numbering.
 

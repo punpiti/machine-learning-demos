@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive activation-function race: sigmoid, tanh, arctan, ReLU, step, and linear all train on the same rain data, same steepness, same learning rate — watch why a step function never moves.">
+  <title>Activation Functions: Why Not Just a Step?</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-7">
+  <link rel="stylesheet" href="styles.css?v=20260817-2">
+</head>
+<body data-index-href="../" data-page-label="Activation Functions">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Chapter 5 · Learning Decision Boundaries</p><h1>Activation functions: why not just a step?</h1><p class="lede">Same rain-day generator and the same shared update rule as <a href="../sgd-vs-lda/">SGD vs. LDA</a> — all six activations train at once, under the identical dataset, steepness k, learning rate η, and sample order. Every difference in the race below comes from the activation function alone.</p></div><aside class="formula"><span>Every update, generalized</span><strong>w ← w + η·k·e·a′(z)·x</strong><small>a′(z) — the slope — gates how much any sample can move the weights</small></aside></header>
+
+    <section class="card dataset-card" aria-label="Choose a dataset">
+      <div class="card-heading"><div><h2>Dataset</h2><p>Quality depends on the data too — pick a shape and watch the race and table change.</p></div></div>
+      <div id="dataset-picker" class="dataset-picker"></div>
+    </section>
+
+    <section class="toolbar card" aria-label="Configure">
+      <span class="control-step">Try:</span>
+      <div class="mode-picker">
+        <button type="button" class="preset-button" data-k="1" data-lr="0.3">Gentle</button>
+        <button type="button" class="preset-button" data-k="8" data-lr="0.4">Aggressive</button>
+        <button type="button" class="preset-button" data-k="25" data-lr="0.7">Break it</button>
+      </div>
+      <div class="param-row"><label for="k-slider">Steepness k</label><input id="k-slider" type="range" min="0.5" max="50" step="0.5" value="1"><span id="k-value" class="param-value">1.0</span></div>
+      <div class="param-row"><label for="lr-slider">Learning rate η</label><input id="lr-slider" type="range" min="0.05" max="1" step="0.05" value="0.3"><span id="lr-value" class="param-value">0.30</span></div>
+      <div class="effective-step" title="This is what actually multiplies the error term every update — two knobs, one number"><span>≈ effective step η×k</span><strong id="effective-step-value">0.30</strong></div>
+    </section>
+
+    <section class="controls-bar card" aria-label="Training controls">
+      <span id="status-text" class="status-text">k = 1.0 · η = 0.30 · Epoch 0</span>
+      <div class="controls">
+        <button id="reset-btn" type="button" class="secondary">Reset</button>
+        <span class="epoch-run-group"><label for="epoch-count">Run</label><input id="epoch-count" type="number" min="1" max="200" value="5"><button id="run-epoch" type="button" class="secondary">epochs →</button></span>
+        <button id="speed-toggle" type="button" class="secondary" title="Auto-train speed">1×</button>
+        <button id="play-pause" type="button">▶ Auto-train</button>
+      </div>
+    </section>
+
+    <section class="card race-card" aria-label="Error vs epoch, all activations">
+      <div class="card-heading"><div><h2>The race: error vs. epoch</h2><p>Same w=0 start, same sample order each epoch — the only thing that differs is a(z).</p></div></div>
+      <div class="race-row">
+        <div class="race-chart-wrap">
+          <svg id="race-chart" class="race-chart" viewBox="0 0 620 300" role="img" aria-label="Training error rate versus epoch for all six activation functions, compared against LDA's fixed error rate"></svg>
+          <div id="activation-legend" class="activation-legend" aria-label="Toggle activations"></div>
+        </div>
+        <div class="race-table-wrap">
+          <p class="compare-note">"Blocked" = points where |a′(z)| &lt; 0.01 right now — why a line is stuck, not just that it is.</p>
+          <div class="table-scroll"><table><thead><tr><th>Activation</th><th>Peak</th><th title="Training points where |slope| < 0.01 right now">Blocked</th><th>Acc.</th><th>Status</th></tr></thead><tbody id="compare-body"></tbody></table></div>
+          <div class="shape-slope-strip" aria-label="Activation shape and slope, at this steepness">
+            <svg id="activation-chart" class="mini-av-chart" viewBox="0 0 200 120" role="img" aria-label="Each selected activation function's curve, a(z)"></svg>
+            <svg id="slope-chart" class="mini-av-chart" viewBox="0 0 200 120" role="img" aria-label="The derivative of each selected activation function, a prime of z"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="note"><strong>Why a step function can't be trained this way.</strong> Every update here is <code>w ← w + η·k·e·a′(z)·x</code> — the error <code>e</code> only moves the weights if the slope <code>a′(z)</code> lets it. For Step, <code>a′(z) = 0</code> everywhere it's defined, so <code>Δw = 0</code> no matter how wrong the guess is: watch its line in the race sit dead flat forever (at 50% on a balanced dataset — try Imbalanced to see the flat line land somewhere else instead), and its "Gradient-blocked" count sit at 24/24 below. As Sigmoid/Tanh/Arctan get steeper (higher k), two different failure modes show up: either the peak slope right at the boundary overshoots on every update and the error never settles ("Oscillating"), or one early big swing pushes most points into saturation, freezing training far from a good boundary despite a flat, "stable-looking" line ("Stuck (saturated)"). ReLU sits in between: a clean slope of 1 on one side, a dead 0 on the other — the same dying-ReLU problem seen in real networks. This is the single-unit version of the vanishing/exploding-gradient problem multi-layer networks face at every layer — see this book's neural-network chapter for the deep-network version.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-2"></script>
+</body>
+</html>

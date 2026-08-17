@@ -11,7 +11,12 @@
 <body data-index-href="../" data-page-label="SGD vs. LDA">
   <main class="app-shell">
     <div data-shared-header></div>
-    <header class="intro"><div><p class="eyebrow">Chapter 5 · Learning Decision Boundaries</p><h1>SGD vs. LDA: learning a boundary one point at a time</h1><p class="lede">24 rain days, 2 features — cloud cover and humidity. LDA computes its straight-line boundary in one closed-form step from the class means and a shared covariance. Stochastic gradient descent learns a boundary the slow way: one training point at a time, one small correction at a time. Step through the arithmetic below and watch the two converge.</p></div><aside class="formula"><span>The shared update rule</span><strong>w ← w + η(y − a(z))x</strong><small>only a(z) changes between perceptron and logistic regression</small></aside></header>
+    <header class="intro"><div><p class="eyebrow">Chapter 5 · Learning Decision Boundaries</p><h1>SGD vs. LDA: learning a boundary one point at a time</h1><p class="lede">2 features — cloud cover and humidity. LDA computes its straight-line boundary in one closed-form step from the class means and a shared covariance. Stochastic gradient descent learns a boundary the slow way: one training point at a time, one small correction at a time. Step through the arithmetic below and watch the two converge.</p></div><aside class="formula"><span>The shared update rule</span><strong>w ← w + η(y − a(z))x</strong><small>only a(z) changes between perceptron and logistic regression</small></aside></header>
+
+    <section class="card dataset-card" aria-label="Choose a dataset">
+      <div class="card-heading"><div><h2>Dataset</h2><p>Quality depends on the data too — pick a shape and watch the boundary and error curve change.</p></div></div>
+      <div id="dataset-picker" class="dataset-picker"></div>
+    </section>
 
     <section class="toolbar card" aria-label="Configure">
       <span class="control-step">Configure</span>
@@ -48,7 +53,7 @@
 
     <section class="card trace-card"><div class="card-heading"><div><h2>Calculation trace</h2><p>Most recent completed update first — z, a, e and the resulting weights, one row per training point.</p></div></div><div class="table-scroll"><table><thead><tr><th>#</th><th>cloud, humidity</th><th>y</th><th>z</th><th>a</th><th>e</th><th>w₁, w₂, b (after)</th></tr></thead><tbody id="trace-body"></tbody></table></div></section>
 
-    <section class="note"><strong>Same update rule, different activation.</strong> Both perceptron and logistic regression update with <code>w ← w + η(y − a(z))x</code> — the only difference is whether <code>a(z)</code> is a hard 0/1 step or the smooth sigmoid. Because this dataset isn't perfectly separable (LDA itself only reaches 87.5% training accuracy), the perceptron can keep flipping weights on the same handful of overlapping points without ever fully stabilizing, while logistic regression keeps converging toward a stable minimum. LDA isn't learned iteratively at all: assuming both classes share one covariance, a Gaussian Bayesian classifier reduces to exactly this kind of straight line in closed form — see Chapter 5's <a href="../bayes-fish-demo/">Salmon or Seabass</a> demo for the probabilistic view of the same idea.</section>
+    <section class="note"><strong>Same update rule, different activation.</strong> Both perceptron and logistic regression update with <code>w ← w + η(y − a(z))x</code> — the only difference is whether <code>a(z)</code> is a hard 0/1 step or the smooth sigmoid. When a dataset isn't perfectly separable (the default Overlapping dataset caps LDA at 87.5% training accuracy), the perceptron can keep flipping weights on the same handful of overlapping points without ever fully stabilizing, while logistic regression keeps converging toward a stable minimum — switch to the Separable dataset above to watch the perceptron actually settle down too. LDA isn't learned iteratively at all: assuming both classes share one covariance, a Gaussian Bayesian classifier reduces to exactly this kind of straight line in closed form — see Chapter 5's <a href="../bayes-fish-demo/">Salmon or Seabass</a> demo for the probabilistic view of the same idea.</section>
     <footer data-shared-footer></footer>
   </main>
   <script src="../shared-layout.js?v=20260817-1"></script>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive train/validation/test and model-selection demo on the Iris dataset: fit candidates, pick a winner on validation, then open the test set once.">
+  <title>Choosing a Model: Train, Validation, Test</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-7">
+  <link rel="stylesheet" href="styles.css?v=20260817-1">
+</head>
+<body data-index-href="../" data-page-label="Choosing a Model">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Chapter 2 · Inside a Learning System</p><h1>Choosing a model: train, validation, test</h1><p class="lede">150 iris flowers, 3 species, split into train / validation / test before any model is fit. Three named model families compete on validation only; the test set opens once, at the end. You only need to recognize the names here — how each one works comes later in the book.</p></div><aside class="formula"><span>The rule</span><strong>fit on train → choose on validation → confirm on test, once</strong><small>a test score that shapes a choice stops being an independent test</small></aside></header>
+
+    <section class="stepper" aria-label="Workflow stages"><button type="button" class="step active" data-stage="0"><b>0</b><span>Data</span></button><span class="step-line"></span><button type="button" class="step" data-stage="1"><b>1</b><span>Split</span></button><span class="step-line"></span><button type="button" class="step" data-stage="2"><b>2</b><span>Compare</span></button><span class="step-line"></span><button type="button" class="step" data-stage="3"><b>3</b><span>Test once</span></button><span class="step-line"></span><button type="button" class="step" data-stage="4"><b>4</b><span>Predict</span></button></section>
+
+    <section class="main-grid">
+      <article class="card chart-card"><div class="card-heading"><div><h2>Sepal length vs. sepal width</h2><p id="chart-caption">Only 2 of the 4 available measurements are used, on purpose.</p></div><span class="tag tag-teal">150 flowers · 3 species</span></div><svg id="chart" class="chart" viewBox="0 0 470 360" role="img" aria-label="Iris flowers plotted by sepal length and sepal width"></svg><div class="legend"><span><i class="dot" style="background:#d66762"></i>Setosa</span><span><i class="dot" style="background:#148a88"></i>Versicolor</span><span><i class="dot" style="background:#5267bf"></i>Virginica</span></div></article>
+
+      <aside class="card story-card"><p class="overline" id="stage-kicker">Stage 0 · The data</p><h2 id="stage-title">150 iris flowers, 3 species</h2><p id="stage-copy">—</p>
+
+        <div id="candidate-section" class="candidate-section"><div id="candidate-cards" class="candidate-cards"></div></div>
+
+        <div id="test-section" class="test-section" hidden><div class="metric-row"><div><span>Test accuracy</span><strong id="test-accuracy">—</strong></div><div><span>Test log loss</span><strong id="test-logloss">—</strong></div></div><p id="test-errors" class="stage-note"></p></div>
+
+        <div id="predict-section" class="predict-section" hidden><div id="predict-result"></div></div>
+
+        <div class="controls"><button id="previous" type="button" class="secondary">← Previous</button><button id="next" type="button">Next →</button></div>
+      </aside>
+    </section>
+
+    <section class="note"><strong>Just the names, for now.</strong> Logistic Regression, Linear Discriminant Analysis, and Gaussian Naive Bayes each score every flower differently, but the mechanics come later in the book — Chapter 3 (<a href="../bayes-rain-demo/">Bayes' Theorem</a>) and Chapter 5 (<a href="../bayes-fish-demo/">Bayes vs. Logistic</a>) unpack two of these in depth. What matters here is the workflow: fit on train, choose on validation, and touch the test set exactly once.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-1"></script>
+</body>
+</html>
