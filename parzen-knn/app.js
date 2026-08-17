@@ -125,7 +125,7 @@
   function setMode(newMode) {
     mode = newMode;
     document.querySelectorAll(".mode-button").forEach(btn => btn.classList.toggle("active", btn.dataset.mode === mode));
-    $("#param-row-parzen").hidden = mode !== "parzen";
+    $("#h-label").textContent = mode === "parzen" ? "Window width h" : "Histogram bin width h";
     $("#param-row-knn").hidden = mode !== "knn";
     looCurve = computeLooCurve();
     render();
@@ -143,6 +143,24 @@
   }
 
   const PLOT = { left: 55, bottom: 310, width: 350, height: 250, top: 60 };
+  const X_HIST = { left: PLOT.left, top: 322, width: PLOT.width, height: 48 };
+  const Y_HIST = { left: 412, top: PLOT.top, width: 48, height: PLOT.height };
+
+  function histogramBins(getValue, minV, maxV) {
+    const binWidth = Math.max(1e-6, h * (maxV - minV));
+    const numBins = Math.max(1, Math.ceil((maxV - minV) / binWidth));
+    const bins = Array.from({ length: numBins }, (_, i) => ({
+      start: minV + i * binWidth,
+      end: i === numBins - 1 ? maxV : minV + (i + 1) * binWidth,
+      counts: emptyCounts(),
+    }));
+    DATA.forEach(row => {
+      const v = getValue(row);
+      const idx = Math.max(0, Math.min(numBins - 1, Math.floor((v - minV) / binWidth)));
+      bins[idx].counts[row.label] += 1;
+    });
+    return bins;
+  }
 
   function renderChart() {
     const svg = $("#chart");
@@ -175,7 +193,50 @@
       const x = minX + (maxX - minX) * fraction, y = minY + (maxY - minY) * fraction;
       grid += `<line class="plot-grid" x1="${px(x)}" y1="${top}" x2="${px(x)}" y2="${bottom}"/><line class="plot-grid" x1="${left}" y1="${py(y)}" x2="${left + width}" y2="${py(y)}"/>`;
     }
-    const axes = `<line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left + width}" y2="${bottom}"/><line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left}" y2="${top}"/><text class="axis-label" x="${left + width / 2}" y="345">${activeScenario.xLabel}</text><text class="axis-label" x="18" y="${(top + bottom) / 2}" transform="rotate(-90 18 ${(top + bottom) / 2})">${activeScenario.yLabel}</text>`;
+    const axes = `<line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left + width}" y2="${bottom}"/><line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left}" y2="${top}"/><text class="axis-label" x="${left + width / 2}" y="392">${activeScenario.xLabel}</text><text class="axis-label" x="18" y="${(top + bottom) / 2}" transform="rotate(-90 18 ${(top + bottom) / 2})">${activeScenario.yLabel}</text>`;
+
+    const xBins = histogramBins(row => row.x, minX, maxX);
+    const yBins = histogramBins(row => row.y, minY, maxY);
+    const xMaxCount = Math.max(1, ...xBins.map(b => Object.values(b.counts).reduce((a, c) => a + c, 0)));
+    const yMaxCount = Math.max(1, ...yBins.map(b => Object.values(b.counts).reduce((a, c) => a + c, 0)));
+    const xActiveBin = xBins.findIndex(b => point.x >= b.start && point.x <= b.end);
+    const yActiveBin = yBins.findIndex(b => point.y >= b.start && point.y <= b.end);
+
+    const xHistBars = xBins.map((bin, i) => {
+      const x0 = px(bin.start), x1 = px(bin.end);
+      const barW = Math.max(0, x1 - x0 - 1);
+      const total = Object.values(bin.counts).reduce((a, c) => a + c, 0);
+      let yCursor = X_HIST.top + X_HIST.height;
+      let bars = "";
+      classes().forEach(cls => {
+        const c = bin.counts[cls] || 0;
+        if (!c) return;
+        const segH = (c / xMaxCount) * X_HIST.height;
+        yCursor -= segH;
+        bars += `<rect x="${x0.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${classColor(cls)}" opacity=".85"/>`;
+      });
+      const highlight = i === xActiveBin ? `<rect class="hist-active" x="${x0.toFixed(1)}" y="${X_HIST.top}" width="${barW.toFixed(1)}" height="${X_HIST.height}"/>` : "";
+      return bars + highlight + (total === 0 ? "" : `<title>${bin.start.toFixed(1)}–${bin.end.toFixed(1)}: ${total} point${total === 1 ? "" : "s"}</title>`);
+    }).join("");
+
+    const yHistBars = yBins.map((bin, i) => {
+      const y0 = py(bin.end), y1 = py(bin.start);
+      const barH = Math.max(0, y1 - y0 - 1);
+      const total = Object.values(bin.counts).reduce((a, c) => a + c, 0);
+      let xCursor = Y_HIST.left;
+      let bars = "";
+      classes().forEach(cls => {
+        const c = bin.counts[cls] || 0;
+        if (!c) return;
+        const segW = (c / yMaxCount) * Y_HIST.width;
+        bars += `<rect x="${xCursor.toFixed(1)}" y="${y0.toFixed(1)}" width="${segW.toFixed(1)}" height="${barH.toFixed(1)}" fill="${classColor(cls)}" opacity=".85"/>`;
+        xCursor += segW;
+      });
+      const highlight = i === yActiveBin ? `<rect class="hist-active" x="${Y_HIST.left}" y="${y0.toFixed(1)}" width="${Y_HIST.width}" height="${barH.toFixed(1)}"/>` : "";
+      return bars + highlight + (total === 0 ? "" : `<title>${bin.start.toFixed(1)}–${bin.end.toFixed(1)}: ${total} point${total === 1 ? "" : "s"}</title>`);
+    }).join("");
+
+    const histMarkup = `<rect class="hist-bg" x="${X_HIST.left}" y="${X_HIST.top}" width="${X_HIST.width}" height="${X_HIST.height}"/><rect class="hist-bg" x="${Y_HIST.left}" y="${Y_HIST.top}" width="${Y_HIST.width}" height="${Y_HIST.height}"/>${xHistBars}${yHistBars}<text class="hist-caption" x="${X_HIST.left}" y="${X_HIST.top - 4}">1D histogram, bin width = h</text>`;
 
     const dots = DATA.map(row => {
       const inWindow = insideIds.has(row.id);
@@ -193,7 +254,7 @@
       testMarkup = `<path class="test-point" d="M ${x} ${y - 10} L ${x + 10} ${y} L ${x} ${y + 10} L ${x - 10} ${y} Z" fill="${color}" fill-opacity=".25" stroke="${color}"><title>Test data: ${activeScenario.xShort} ${testPoint.x}, ${activeScenario.yShort} ${testPoint.y}</title></path><text class="test-point-label" x="${x + 12}" y="${y - 10}" fill="${color}">test${result.label ? ` → ${classLabel(result.label)}` : " → undefined"}</text>`;
     }
 
-    svg.innerHTML = `<defs><pattern id="undef-pattern" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#eef1f2"/><line x1="0" y1="0" x2="0" y2="7" stroke="#c7ced2" stroke-width="2"/></pattern></defs>${regions}${grid}${axes}${dots}${windowMarkup}${testMarkup}`;
+    svg.innerHTML = `<defs><pattern id="undef-pattern" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#eef1f2"/><line x1="0" y1="0" x2="0" y2="7" stroke="#c7ced2" stroke-width="2"/></pattern></defs>${regions}${grid}${axes}${dots}${windowMarkup}${testMarkup}${histMarkup}`;
     svg.querySelectorAll(".point").forEach(circle => circle.addEventListener("click", event => {
       event.stopPropagation();
       selectedId = Number(circle.dataset.id);
@@ -227,12 +288,18 @@
 
     if (result.total === 0) {
       $("#score-list").innerHTML = `<p class="round-empty">No training points fall inside this window, so there is nothing to vote on. Try a larger h.</p>`;
+      $("#confidence-note").textContent = "";
     } else {
       $("#score-list").innerHTML = classes().map(cls => {
         const count = result.counts[cls] || 0;
-        const pct = (count / result.total) * 100;
-        return `<div class="score-row"><span class="prob-dot" style="background:${classColor(cls)}"></span><span class="prob-name">${classLabel(cls)}</span><div class="prob-track"><i style="width:${pct.toFixed(0)}%;background:${classColor(cls)}"></i></div><b>${count}/${result.total}</b></div>`;
+        const p = count / result.total;
+        const pct = p * 100;
+        const se = Math.sqrt((p * (1 - p)) / result.total) * 100;
+        return `<div class="score-row"><span class="prob-dot" style="background:${classColor(cls)}"></span><span class="prob-name">${classLabel(cls)}</span><div class="prob-track"><i style="width:${pct.toFixed(0)}%;background:${classColor(cls)}"></i></div><b>${count}/${result.total}</b><small>±${se.toFixed(0)}%</small></div>`;
       }).join("");
+      $("#confidence-note").textContent = result.total < 5
+        ? `Only ${result.total} point${result.total === 1 ? "" : "s"} here — small samples swing a lot from point to point (high variance, wide ±SE).`
+        : `${result.total} points here — more points settle the estimate down (lower variance, narrower ±SE), at the cost of blurring away anything smaller than the window.`;
     }
 
     const loo = looAccuracyAt(mode === "parzen" ? h : k);

@@ -30,7 +30,10 @@
 .card-heading,.section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
 .card h2,.section-heading h2{margin:0;font-size:1.22rem}
 .card-heading p,.section-heading>p{margin:6px 0 0;color:var(--muted);font-size:.88rem}
-.chart-card svg.chart{display:block;width:100%;height:auto;max-height:365px;margin-top:10px;cursor:crosshair}
+.chart-card svg.chart{display:block;width:100%;height:auto;max-height:406px;margin-top:10px;cursor:crosshair}
+.hist-bg{fill:#fbfcfc;stroke:#dfe6ea}
+.hist-active{fill:none;stroke:#2b67c5;stroke-width:1.6;stroke-dasharray:3 2}
+.hist-caption{fill:#8a97a1;font-size:9px;font-weight:750}
 .chart-card .point{cursor:pointer;transition:r .15s}
 .chart-card .point:hover{stroke:#17212b;stroke-width:4}
 .plot-axis{stroke:#8b9aa3;stroke-width:1.2}
@@ -50,11 +53,13 @@
 .story-card>p:not(.overline){margin:0 0 10px;color:var(--muted);font-size:.82rem}
 .window-summary{margin:12px 0 4px;padding:9px 11px;border-radius:9px;background:#f3f6f7;color:#3c4d55;font-size:.76rem;font-weight:700}
 .score-list{display:grid;gap:8px;margin-top:10px}
-.score-row{display:grid;grid-template-columns:12px 90px 1fr 42px;align-items:center;gap:8px;font-size:.74rem;font-weight:750}
+.score-row{display:grid;grid-template-columns:12px 90px 1fr 42px 40px;align-items:center;gap:8px;font-size:.74rem;font-weight:750}
+.score-row small{color:var(--muted);font-size:.68rem;font-weight:700;text-align:right}
 .prob-dot{width:10px;height:10px;border-radius:50%}
 .prob-track{height:11px;overflow:hidden;border-radius:99px;background:#eef1f2}
 .prob-track i{display:block;height:100%;transition:width .25s}
 .round-empty{padding:10px 2px;color:var(--muted);font-size:.8rem}
+.confidence-note{margin:8px 0 0;color:var(--muted);font-size:.72rem;font-weight:650;line-height:1.4}
 .loo-inline{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;font-weight:750}
 .loo-inline strong{color:var(--teal);font-size:1.05rem}
 

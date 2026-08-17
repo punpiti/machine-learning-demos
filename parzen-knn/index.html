@@ -18,7 +18,7 @@
   <meta name="twitter:description" content="Compare a fixed-volume Parzen window against fixed-k nearest neighbors, and use a leave-one-out accuracy curve to see why the window size matters.">
   <meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/parzen-knn/og-parzen-knn.png">
   <link rel="stylesheet" href="../shared.css?v=20260817-3">
-  <link rel="stylesheet" href="styles.css?v=20260817-2">
+  <link rel="stylesheet" href="styles.css?v=20260817-3">
 </head>
 <body data-index-href="../" data-page-label="Parzen Windows &amp; k-NN">
   <main class="app-shell">
@@ -29,14 +29,14 @@
       <span class="control-step">Configure</span>
       <label>Class scenario <select id="class-scenario"><option value="two" selected>2 classes: learning</option><option value="three">3 classes: cat / dog / bird</option></select></label>
       <div class="mode-picker" role="group" aria-label="Method"><button class="mode-button active" data-mode="parzen" type="button">Parzen Window</button><button class="mode-button" data-mode="knn" type="button">k-Nearest Neighbor</button></div>
-      <div id="param-row-parzen" class="param-row"><label for="h-slider">Window width h</label><input id="h-slider" type="range" min="0.02" max="0.9" step="0.01"><span id="h-value" class="param-value"></span></div>
+      <div id="param-row-parzen" class="param-row"><label for="h-slider" id="h-label">Window width h</label><input id="h-slider" type="range" min="0.02" max="0.9" step="0.01"><span id="h-value" class="param-value"></span></div>
       <div id="param-row-knn" class="param-row" hidden><label for="k-slider">Neighbors k</label><input id="k-slider" type="range" min="1" max="15" step="1"><span id="k-value" class="param-value"></span></div>
       <button id="use-best" type="button" class="button-secondary">Use best (LOO) →</button>
     </section>
 
     <section class="main-grid">
-      <article class="card chart-card"><div class="card-heading"><div><h2>Training data and decision surface</h2><p>Click a point to inspect its window (leave-one-out); click empty space to test a new point.</p></div><span id="feature-class-count" class="tag tag-teal">2 features · 2 classes</span></div><svg id="chart" class="chart" viewBox="0 0 470 360" role="img" aria-label="Two-dimensional training data, the classifier's decision surface, and the current window"></svg><p id="training-description" class="test-hint">Weekly practice time and quiz score.</p><div id="chart-legend" class="legend"></div></article>
-      <aside class="card story-card"><p class="overline">Selected point</p><h2>What decides its class?</h2><p id="selected-description">Selected example</p><span id="prediction-tag" class="tag tag-amber">—</span><p id="window-summary" class="window-summary"></p><div id="score-list" class="score-list"></div><div class="loo-inline"><span>Leave-one-out accuracy at this setting</span><strong id="loo-current">—</strong></div></aside>
+      <article class="card chart-card"><div class="card-heading"><div><h2>Training data and decision surface</h2><p>Click a point to inspect its window (leave-one-out); click empty space to test a new point. The bar strips are 1D histograms of each feature, using the same h as the bin width.</p></div><span id="feature-class-count" class="tag tag-teal">2 features · 2 classes</span></div><svg id="chart" class="chart" viewBox="0 0 470 400" role="img" aria-label="Two-dimensional training data, the classifier's decision surface, the current window, and per-axis histograms"></svg><p id="training-description" class="test-hint">Weekly practice time and quiz score.</p><div id="chart-legend" class="legend"></div></article>
+      <aside class="card story-card"><p class="overline">Selected point</p><h2>What decides its class?</h2><p id="selected-description">Selected example</p><span id="prediction-tag" class="tag tag-amber">—</span><p id="window-summary" class="window-summary"></p><div id="score-list" class="score-list"></div><p id="confidence-note" class="confidence-note"></p><div class="loo-inline"><span>Leave-one-out accuracy at this setting</span><strong id="loo-current">—</strong></div></aside>
       <section class="tree-section"><div class="section-heading"><div><p class="eyebrow">Choosing the window</p><h2>Leave-one-out accuracy across the window range</h2></div><p>Too small a window overfits to single points (high variance); too large a window blurs classes together (high bias). The dot marks the current setting, the ring marks the best.</p></div><svg id="loo-chart" class="loo-chart" viewBox="0 0 640 150" role="img" aria-label="Leave-one-out accuracy curve across the window range"></svg></section>
     </section>
 
@@ -44,6 +44,6 @@
     <footer data-shared-footer></footer>
   </main>
   <script src="../shared-layout.js?v=20260817-1"></script>
-  <script src="app.js?v=20260817-2"></script>
+  <script src="app.js?v=20260817-3"></script>
 </body>
 </html>
