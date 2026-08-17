@@ -30,7 +30,7 @@
 .card-heading,.section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
 .card h2,.section-heading h2{margin:0;font-size:1.22rem}
 .card-heading p,.section-heading>p{margin:6px 0 0;color:var(--muted);font-size:.88rem}
-.chart-card svg.chart{display:block;width:100%;height:auto;margin-top:10px;cursor:crosshair}
+.chart-card svg.chart{display:block;width:100%;height:auto;max-height:365px;margin-top:10px;cursor:crosshair}
 .chart-card .point{cursor:pointer;transition:r .15s}
 .chart-card .point:hover{stroke:#17212b;stroke-width:4}
 .plot-axis{stroke:#8b9aa3;stroke-width:1.2}

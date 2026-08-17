@@ -201,11 +201,9 @@
       render();
     }));
     svg.onclick = event => {
-      const box = svg.getBoundingClientRect();
-      const svgX = ((event.clientX - box.left) / box.width) * 470;
-      const svgY = ((event.clientY - box.top) / box.height) * 360;
-      const x = minX + ((svgX - left) / width) * (maxX - minX);
-      const y = minY + ((bottom - svgY) / height) * (maxY - minY);
+      const pt = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      const x = minX + ((pt.x - left) / width) * (maxX - minX);
+      const y = minY + ((bottom - pt.y) / height) * (maxY - minY);
       testPoint = { x: Number(Math.max(minX, Math.min(maxX, x)).toFixed(1)), y: Number(Math.max(minY, Math.min(maxY, y)).toFixed(1)), isTest: true };
       selectedId = null;
       render();
