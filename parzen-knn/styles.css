@@ -26,6 +26,7 @@
 .button-secondary{margin-left:auto;border:0;border-radius:9px;padding:9px 13px;background:var(--teal);color:#fff;cursor:pointer;font-size:.8rem;font-weight:850}
 
 .main-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(330px,.82fr);gap:20px}
+.main-grid .tree-section{grid-column:1/-1;margin-top:0}
 .card-heading,.section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
 .card h2,.section-heading h2{margin:0;font-size:1.22rem}
 .card-heading p,.section-heading>p{margin:6px 0 0;color:var(--muted);font-size:.88rem}
@@ -72,6 +73,14 @@
 @media(max-width:820px){
   .intro,.main-grid{grid-template-columns:1fr}
   .formula{max-width:400px}
+}
+@media(min-width:1700px){
+  /* Ultrawide: don't just stretch the two cards wider — use the extra
+     columns to bring the leave-one-out curve up beside them instead of
+     making the visitor scroll for it. */
+  .main-grid{grid-template-columns:minmax(0,1.15fr) minmax(300px,.72fr) minmax(380px,.95fr)}
+  .main-grid .tree-section{grid-column:auto;margin-top:0}
+  .loo-chart{height:100%}
 }
 @media(max-width:560px){
   .app-shell{padding:25px 16px 35px}
