@@ -8,17 +8,17 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Random Forest Voting Lab">
   <meta property="og:description" content="Compare a single tree, bagging, and random forest voting in an interactive teaching demo.">
-  <meta property="og:url" content="https://punpiti.github.io/machine-learning-demos/random-forest/">
-  <meta property="og:image" content="https://punpiti.github.io/machine-learning-demos/random-forest/og-random-forest.png">
+  <meta property="og:url" content="https://urban.cpe.ku.ac.th/machine_learning/demos/random-forest/">
+  <meta property="og:image" content="https://urban.cpe.ku.ac.th/machine_learning/demos/random-forest/og-random-forest.png">
   <meta property="og:image:width" content="1731">
   <meta property="og:image:height" content="909">
   <meta property="og:image:alt" content="Random forest teaching diagram with decision trees and majority voting">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Random Forest Voting Lab">
   <meta name="twitter:description" content="Compare a single tree, bagging, and random forest voting in an interactive teaching demo.">
-  <meta name="twitter:image" content="https://punpiti.github.io/machine-learning-demos/random-forest/og-random-forest.png">
+  <meta name="twitter:image" content="https://urban.cpe.ku.ac.th/machine_learning/demos/random-forest/og-random-forest.png">
   <link rel="stylesheet" href="../shared.css?v=20260817-3">
-  <link rel="stylesheet" href="styles.css?v=20260817-11">
+  <link rel="stylesheet" href="styles.css?v=20260817-12">
 </head>
 <body data-index-href="../" data-page-label="Random Forest Voting Lab">
   <main class="app-shell">
@@ -32,7 +32,7 @@
       <span class="control-step">1. Configure the data and trees</span>
       <label>Class scenario <select id="class-scenario"><option value="two" selected>2 classes: learning</option><option value="three">3 classes: cat / dog / bird</option></select></label>
       <label>Number of trees <select id="tree-count"><option value="3">3</option><option value="5" selected>5</option><option value="9">9</option></select></label>
-      <label>Maximum depth <select id="max-depth"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
+      <label>Maximum depth <select id="max-depth"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></label>
     </section>
 
     <section class="model-chooser card" aria-label="Model selection">
@@ -41,6 +41,20 @@
       <button id="regenerate" class="button button-primary" type="button">Regrow current model</button>
       <span id="forest-status" class="status">5 trees · 1 random feature per split</span>
       <div id="model-difference" class="model-difference" aria-live="polite"></div>
+    </section>
+
+    <section id="cart-section" class="lesson-grid cart-grid">
+      <article class="card">
+        <div class="card-heading"><div><h2>How the root split is chosen</h2><p>Every candidate threshold on each feature, scored by weighted Gini impurity. The lowest point wins.</p></div></div>
+        <svg id="split-chart" class="split-chart" viewBox="0 0 470 190" role="img" aria-label="Weighted Gini impurity versus candidate threshold, for each feature, with the winning split marked"></svg>
+        <div class="legend legend-compact"><span><i class="line-swatch split-x"></i><span id="split-x-label">feature x</span></span><span><i class="line-swatch split-y"></i><span id="split-y-label">feature y</span></span></div>
+        <p id="split-readout" class="split-readout">—</p>
+      </article>
+      <article class="card">
+        <div class="card-heading"><div><h2>Depth vs. overfitting</h2><p>Training accuracy always climbs with depth. Leave-one-out accuracy — refit with each point held out in turn — shows where that stops helping. The 2-class dataset is separable by one rule, so try the 3-class cat/dog/bird scenario above for a curve that actually climbs.</p></div></div>
+        <svg id="depth-chart" class="depth-chart" viewBox="0 0 300 190" role="img" aria-label="Training accuracy and leave-one-out accuracy versus maximum tree depth"></svg>
+        <div class="legend legend-compact"><span><i class="line-swatch depth-train"></i>Train: <b id="depth-train-current">—</b></span><span><i class="line-swatch depth-loo"></i>Leave-one-out: <b id="depth-loo-current">—</b></span></div>
+      </article>
     </section>
 
     <section class="forest-section">
@@ -70,6 +84,6 @@
     <footer data-shared-footer></footer>
   </main>
   <script src="../shared-layout.js?v=20260817-1"></script>
-  <script src="app.js?v=20260817-16"></script>
+  <script src="app.js?v=20260817-17"></script>
 </body>
 </html>

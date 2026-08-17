@@ -5,7 +5,7 @@
 .lede{max-width:740px;margin:15px 0 0;color:var(--muted);font-size:1rem}
 .formula{padding:16px 18px;border:1px solid #c8d9f1;border-radius:16px;background:#edf4ff;box-shadow:var(--shadow)}
 .formula span,.formula small{display:block;color:var(--muted);font-size:.72rem;font-weight:750}
-.formula strong{display:block;margin:6px 0;font-size:1rem;color:var(--blue);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.formula strong{display:block;margin:6px 0;font-size:.92rem;color:var(--blue);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
 .card{padding:23px;border:1px solid var(--line);border-radius:20px;background:var(--card);box-shadow:var(--shadow)}
 .card-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
@@ -25,13 +25,11 @@
 
 .toolbar{position:sticky;top:10px;z-index:30;display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;padding:12px 20px}
 .control-step{color:var(--blue);font-size:.78rem;font-weight:900}
-.mode-picker{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.mode-button{border:1px solid var(--line);border-radius:8px;padding:7px 11px;background:#fff;color:var(--ink);font:800 .76rem inherit;cursor:pointer}
-.mode-button.active{border-color:var(--blue);background:#eaf3ff;color:var(--blue)}
 .param-row{display:flex;align-items:center;gap:9px}
 .param-row label{color:var(--muted);font-size:.78rem;font-weight:800}
-.param-row input[type=range]{width:150px}
+.param-row input[type=range]{width:170px}
 .param-value{min-width:34px;color:var(--ink);font-size:.8rem;font-weight:850;font-family:ui-monospace,SFMono-Regular,monospace}
+.param-hint{flex-basis:100%;margin:2px 0 0;color:var(--muted);font-size:.72rem}
 
 .controls-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px;padding:14px 20px}
 .status-text{color:var(--muted);font-size:.78rem;font-weight:800;font-family:ui-monospace,SFMono-Regular,monospace}
@@ -55,8 +53,10 @@
 .decision-region{opacity:.16}
 .point{transition:r .15s}
 .point-current{filter:drop-shadow(0 0 5px rgba(213,139,22,.55))}
+.sv-ring{fill:none;stroke:#17212b;stroke-width:1.6;stroke-dasharray:3 3;opacity:.55}
 .boundary-line{stroke-width:2.6}
-.boundary-sgd{stroke:var(--blue)}
+.boundary-svm{stroke:var(--blue)}
+.boundary-margin{stroke:var(--blue);stroke-width:1.4;stroke-dasharray:5 4;opacity:.55}
 .boundary-lda{stroke:#17212b;stroke-dasharray:7 5;opacity:.85}
 .callout-leader{stroke:#d58b16;stroke-width:1.3;stroke-dasharray:2 3;opacity:.75}
 .callout-dot{fill:#d58b16}
@@ -67,7 +67,8 @@
 .legend b{color:var(--ink)}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .line-swatch{width:18px;height:0;border-top:3px solid;display:inline-block}
-.line-swatch.boundary-sgd{border-top-color:var(--blue)}
+.line-swatch.boundary-svm{border-top-color:var(--blue)}
+.line-swatch.boundary-margin{border-top-color:var(--blue);border-top-style:dashed;opacity:.65}
 .line-swatch.boundary-lda{border-top-color:#17212b;border-top-style:dashed}
 
 .chart-row{display:flex;gap:18px;align-items:flex-start;margin-top:10px}
@@ -81,6 +82,7 @@
 .err-current-dot{fill:var(--blue);stroke:#fff;stroke-width:2}
 .axis-label.err-y{font-size:9px}
 .legend-compact{gap:9px 14px;justify-content:flex-start;margin-top:8px;font-size:.72rem}
+.metric-row-svm{grid-template-columns:1fr 1fr;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 
 .story-card{display:flex;flex-direction:column}
 .story-card h2{font-size:1.1rem;line-height:1.2;margin:4px 0 10px}
@@ -90,7 +92,7 @@
 .arrow{color:var(--muted)}
 .state-box{padding:13px 14px;border-left:4px solid var(--teal);border-radius:10px;background:#f4fbfa;margin-bottom:14px}
 .state-kicker{margin-bottom:6px;color:var(--teal);font-size:.68rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
-.state-equation{color:#244d72;font:800 .84rem ui-monospace,SFMono-Regular,Menlo,monospace}
+.state-equation{color:#244d72;font:800 .8rem ui-monospace,SFMono-Regular,Menlo,monospace}
 .state-box dl{display:grid;grid-template-columns:76px 1fr;gap:5px 9px;margin:11px 0 0;font-size:.73rem}
 .state-box dt{color:var(--muted);font-weight:800}
 .state-box dd{margin:0;color:#384d58;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}

@@ -2,8 +2,9 @@
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
 
-  // --- Data: three selectable rain-day datasets, 2 features (cloud %, humidity %). "Overlapping"
-  // is the same generator (same seed, same order of operations) as activation-functions' default. ---
+  // --- Data: same three rain-day datasets (2 features: cloud %, humidity %) as
+  // sgd-vs-lda and activation-functions — same seeds, same generator, so the
+  // scatter is pixel-identical across all Chapter 5 demos. ---
   function seededRandom(seed) {
     let s = seed;
     return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -12,8 +13,8 @@
 
   const DATASETS = {
     overlapping: { label: "Overlapping", blurb: "The default rain data — LDA tops out at 87.5%.", seed: 20260817, counts: [12, 12], centers: [[34, 38], [66, 68]], spread: [70, 60] },
-    separable: { label: "Separable", blurb: "Classes barely overlap — most activations converge cleanly.", seed: 20260820, counts: [12, 12], centers: [[20, 20], [80, 80]], spread: [26, 26] },
-    imbalanced: { label: "Imbalanced", blurb: "19 rainy days, 5 dry — skewed class sizes change the pull.", seed: 20260821, counts: [5, 19], centers: [[34, 38], [66, 68]], spread: [70, 60] },
+    separable: { label: "Separable", blurb: "Classes barely overlap — the margin has room to be wide.", seed: 20260820, counts: [12, 12], centers: [[20, 20], [80, 80]], spread: [26, 26] },
+    imbalanced: { label: "Imbalanced", blurb: "19 rainy days, 5 dry — skewed class sizes change which points become support vectors.", seed: 20260821, counts: [5, 19], centers: [[34, 38], [66, 68]], spread: [70, 60] },
   };
   const DATASET_ORDER = ["overlapping", "separable", "imbalanced"];
 
@@ -41,8 +42,10 @@
   const CLASS_COLOR = { 0: "#d58b16", 1: "#148a88" };
   const CLASS_LABEL = { 0: "No rain", 1: "Rain" };
   const scaledX = d => d.cloud / 100, scaledY = d => d.humidity / 100;
+  const pm1 = d => (d.y === 1 ? 1 : -1); // SVM math wants labels in {-1, +1}, not {0, 1}
 
-  // --- Linear Discriminant Analysis: closed-form, shared-covariance boundary ---
+  // --- Linear Discriminant Analysis: closed-form, shared-covariance boundary —
+  // the same fixed reference line every Chapter 5 demo compares against. ---
   function fitLDA(rows) {
     const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
     const g0 = rows.filter(d => d.y === 0), g1 = rows.filter(d => d.y === 1);
@@ -67,22 +70,6 @@
   }
   let LDA = fitLDA(DATA);
 
-  // --- Activation functions: same update rule, different a(z) ---
-  const ACTIVATIONS = {
-    sigmoid: {
-      label: "Logistic (sigmoid)",
-      fn: z => 1 / (1 + Math.exp(-z)),
-      eq: "a = σ(z) = 1 / (1 + e^(−z))",
-      meaning: "Predicted probability of rain — a smooth curve between 0 and 1",
-    },
-    step: {
-      label: "Perceptron (step)",
-      fn: z => (z >= 0 ? 1 : 0),
-      eq: "a = step(z) = 1 if z ≥ 0, else 0",
-      meaning: "Predicted class — a hard 0/1 guess, no in-between",
-    },
-  };
-
   function shuffledOrder(epoch) {
     const rand = seededRandom(141825719 + epoch * 97);
     const idx = DATA.map(d => d.id);
@@ -93,7 +80,11 @@
     return idx;
   }
 
-  // --- Training state ---
+  // --- Training state: Pegasos-style soft-margin SVM, one training point per
+  // update. Same shrink-and-nudge shape as the SGD demo's w ← w + η(y−a)x, but
+  // the "error" term is now a hinge/margin-violation indicator instead of a
+  // smooth residual, and every step also shrinks w toward zero by λ. ---
+  const LR = 0.1; // fixed — the slider that matters here is λ, the margin control
   function accuracyFor(w1, w2, b) {
     let correct = 0;
     DATA.forEach(d => { const z = w1 * scaledX(d) + w2 * scaledY(d) + b; if ((z >= 0 ? 1 : 0) === d.y) correct += 1; });
@@ -101,48 +92,46 @@
   }
   let LDA_ERROR = 1 - LDA.acc;
 
-  function freshState(datasetKey, activation, lr) {
-    return { datasetKey, activation, lr, w1: 0, w2: 0, b: 0, epoch: 1, order: shuffledOrder(1), idx: 0, stepInSample: 0, history: [], totalUpdates: 0, playing: false, autoStopReason: null, epochErrors: [{ epoch: 0, error: 1 - accuracyFor(0, 0, 0) }] };
+  function freshState(datasetKey, lambda) {
+    return { datasetKey, lambda, w1: 0, w2: 0, b: 0, epoch: 1, order: shuffledOrder(1), idx: 0, stepInSample: 0, history: [], totalUpdates: 0, playing: false, autoStopReason: null, epochErrors: [{ epoch: 0, error: 1 - accuracyFor(0, 0, 0) }] };
   }
-  let state = freshState("overlapping", "sigmoid", 0.5);
+  let state = freshState("overlapping", 0.02);
   let playTimer = null;
 
   const currentSample = () => DATA[state.order[state.idx]];
-
   const f3 = n => n.toFixed(3);
 
-  function computeSteps(w1, w2, b, sample, activationKey, lr) {
-    const act = ACTIVATIONS[activationKey];
-    const X = scaledX(sample), Y = scaledY(sample), y = sample.y;
+  function computeSteps(w1, w2, b, sample, lambda) {
+    const X = scaledX(sample), Y = scaledY(sample), y = pm1(sample);
     const z = w1 * X + w2 * Y + b;
-    const a = act.fn(z);
-    const e = y - a;
-    const dw1 = lr * e * X, dw2 = lr * e * Y, db = lr * e;
+    const m = y * z;
+    const viol = m < 1 ? 1 : 0;
+    const dw1 = LR * (viol * y * X - lambda * w1);
+    const dw2 = LR * (viol * y * Y - lambda * w2);
+    const db = LR * viol * y;
     const nw1 = w1 + dw1, nw2 = w2 + dw2, nb = b + db;
     return [
-      { label: "z", eq: "z = w₁·cloud + w₂·humidity + b", values: `w₁=${f3(w1)}, w₂=${f3(w2)}, b=${f3(b)}, cloud=${X.toFixed(2)}, humidity=${Y.toFixed(2)}`, calc: `${f3(w1)}(${X.toFixed(2)}) + ${f3(w2)}(${Y.toFixed(2)}) + ${f3(b)}`, result: f3(z), meaning: "Weighted sum of the (0–1 scaled) features — the pre-activation score" },
-      { label: "a", eq: act.eq, values: `z=${f3(z)}`, calc: activationKey === "sigmoid" ? `1 / (1 + e^(−${f3(z)}))` : `is ${f3(z)} ≥ 0?`, result: f3(a), meaning: act.meaning },
-      { label: "e", eq: "e = y − a", values: `y=${y}, a=${f3(a)}`, calc: `${y} − ${f3(a)}`, result: f3(e), meaning: "The error this sample produced — zero means no update is needed" },
-      { label: "Δw₁", eq: "Δw₁ = η·e·cloud", values: `η=${f3(lr)}, e=${f3(e)}, cloud=${X.toFixed(2)}`, calc: `${f3(lr)} × ${f3(e)} × ${X.toFixed(2)}`, result: f3(dw1), meaning: "How much to nudge the cloud-cover weight" },
-      { label: "Δw₂", eq: "Δw₂ = η·e·humidity", values: `η=${f3(lr)}, e=${f3(e)}, humidity=${Y.toFixed(2)}`, calc: `${f3(lr)} × ${f3(e)} × ${Y.toFixed(2)}`, result: f3(dw2), meaning: "How much to nudge the humidity weight" },
-      { label: "Δb", eq: "Δb = η·e", values: `η=${f3(lr)}, e=${f3(e)}`, calc: `${f3(lr)} × ${f3(e)}`, result: f3(db), meaning: "How much to nudge the bias" },
+      { label: "z", eq: "z = w₁·cloud + w₂·humidity + b", values: `w₁=${f3(w1)}, w₂=${f3(w2)}, b=${f3(b)}, cloud=${X.toFixed(2)}, humidity=${Y.toFixed(2)}`, calc: `${f3(w1)}(${X.toFixed(2)}) + ${f3(w2)}(${Y.toFixed(2)}) + ${f3(b)}`, result: f3(z), meaning: "Signed distance-like score — which side of the boundary, and how far" },
+      { label: "margin", eq: "margin = y·z  (y ∈ {−1, +1})", values: `y=${y}, z=${f3(z)}`, calc: `${y} × ${f3(z)}`, result: `${f3(m)}${viol ? "  (< 1 → support vector)" : "  (≥ 1 → outside margin)"}`, meaning: viol ? "Inside the margin or misclassified — this point pushes the boundary" : "Safely past the margin — this point is ignored this update" },
+      { label: "Δw₁", eq: "Δw₁ = η·(𝟙[margin<1]·y·cloud − λ·w₁)", values: `η=${LR}, 𝟙=${viol}, y=${y}, cloud=${X.toFixed(2)}, λ=${f3(lambda)}, w₁=${f3(w1)}`, calc: `${LR} × (${viol}×${y}×${X.toFixed(2)} − ${f3(lambda)}×${f3(w1)})`, result: f3(dw1), meaning: "Hinge pull (only if a support vector) minus a constant shrink toward 0" },
+      { label: "Δw₂", eq: "Δw₂ = η·(𝟙[margin<1]·y·humidity − λ·w₂)", values: `η=${LR}, 𝟙=${viol}, y=${y}, humidity=${Y.toFixed(2)}, λ=${f3(lambda)}, w₂=${f3(w2)}`, calc: `${LR} × (${viol}×${y}×${Y.toFixed(2)} − ${f3(lambda)}×${f3(w2)})`, result: f3(dw2), meaning: "Same rule, humidity's weight" },
+      { label: "Δb", eq: "Δb = η·𝟙[margin<1]·y", values: `η=${LR}, 𝟙=${viol}, y=${y}`, calc: `${LR} × ${viol} × ${y}`, result: f3(db), meaning: "Bias only moves when this point is a support vector — it isn't shrunk by λ" },
       { label: "w₁", eq: "w₁ ← w₁ + Δw₁", values: `w₁=${f3(w1)}, Δw₁=${f3(dw1)}`, calc: `${f3(w1)} + ${f3(dw1)}`, result: f3(nw1), meaning: "Updated cloud-cover weight" },
       { label: "w₂", eq: "w₂ ← w₂ + Δw₂", values: `w₂=${f3(w2)}, Δw₂=${f3(dw2)}`, calc: `${f3(w2)} + ${f3(dw2)}`, result: f3(nw2), meaning: "Updated humidity weight" },
       { label: "b", eq: "b ← b + Δb", values: `b=${f3(b)}, Δb=${f3(db)}`, calc: `${f3(b)} + ${f3(db)}`, result: f3(nb), meaning: "Updated bias" },
     ];
   }
 
-  function updatedWeights(w1, w2, b, sample, activationKey, lr) {
-    const act = ACTIVATIONS[activationKey];
-    const X = scaledX(sample), Y = scaledY(sample), y = sample.y;
-    const z = w1 * X + w2 * Y + b, a = act.fn(z), e = y - a;
-    return { w1: w1 + lr * e * X, w2: w2 + lr * e * Y, b: b + lr * e, z, a, e };
+  function updatedWeights(w1, w2, b, sample, lambda) {
+    const X = scaledX(sample), Y = scaledY(sample), y = pm1(sample);
+    const z = w1 * X + w2 * Y + b, m = y * z, viol = m < 1 ? 1 : 0;
+    return { w1: w1 + LR * (viol * y * X - lambda * w1), w2: w2 + LR * (viol * y * Y - lambda * w2), b: b + LR * viol * y, z, m, viol };
   }
 
   function applyUpdate() {
     const sample = currentSample();
-    const { w1, w2, b, z, a, e } = updatedWeights(state.w1, state.w2, state.b, sample, state.activation, state.lr);
-    state.history.unshift({ n: state.totalUpdates + 1, sample, z, a, e, w1, w2, b });
+    const { w1, w2, b, z, m, viol } = updatedWeights(state.w1, state.w2, state.b, sample, state.lambda);
+    state.history.unshift({ n: state.totalUpdates + 1, sample, z, m, viol, w1, w2, b });
     if (state.history.length > 14) state.history.pop();
     state.w1 = w1; state.w2 = w2; state.b = b;
     state.totalUpdates += 1;
@@ -158,35 +147,39 @@
   }
 
   function tick() {
-    if (state.stepInSample < 9) { state.stepInSample = 9; applyUpdate(); }
+    if (state.stepInSample < 8) { state.stepInSample = 8; applyUpdate(); }
     else { advanceToNextSample(); }
   }
 
   function nextStep() {
-    if (state.stepInSample < 9) {
+    if (state.stepInSample < 8) {
       state.stepInSample += 1;
-      if (state.stepInSample === 9) applyUpdate();
+      if (state.stepInSample === 8) applyUpdate();
     } else {
       advanceToNextSample();
     }
     render();
   }
   function finishSample() { tick(); render(); }
-  function runEpochs(count) {
+  function trainEpochsSilently(count) {
     const targetEpoch = state.epoch + count;
     const maxGuard = count * DATA.length * 2 + 10;
     let guard = 0;
     while (state.epoch < targetEpoch && guard < maxGuard) { tick(); guard += 1; }
-    render();
   }
+  function runEpochs(count) { trainEpochsSilently(count); render(); }
+
+  // A fresh w=0 boundary is invisible (no line, every point "inside" the
+  // margin) — confusing the moment you pick a dataset. Pre-train a bit so
+  // picking a dataset always shows a real boundary, margin, and a small
+  // support-vector set right away. "Reset" still goes back to w=0 for the
+  // step-by-step walkthrough.
+  const PRETRAIN_EPOCHS = 25;
 
   const SPEEDS = [{ m: 1, ms: 320 }, { m: 4, ms: 110 }, { m: 10, ms: 40 }];
   let speedIdx = 0;
   const MAX_AUTO_EPOCH = 150;
 
-  // Auto-train has no natural finish line — a perceptron on non-separable data can
-  // oscillate forever — so stop on our own once the error has flattened out, or once
-  // the epoch count hits a hard cap, rather than running until the user notices.
   function hasConverged() {
     if (state.epochErrors.length < 6) return false;
     const recent = state.epochErrors.slice(-5).map(e => e.error);
@@ -218,7 +211,7 @@
   }
   function resetTraining() {
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    state = freshState(state.datasetKey, state.activation, state.lr);
+    state = freshState(state.datasetKey, state.lambda);
     render();
   }
   function setDataset(key) {
@@ -227,13 +220,22 @@
     DATA = generateDataset(key);
     LDA = fitLDA(DATA);
     LDA_ERROR = 1 - LDA.acc;
-    state = freshState(key, state.activation, state.lr);
+    state = freshState(key, state.lambda);
+    trainEpochsSilently(PRETRAIN_EPOCHS);
     render();
   }
 
   const currentTrainAccuracy = () => accuracyFor(state.w1, state.w2, state.b);
+  const supportVectorIds = () => {
+    const { w1, w2, b } = state;
+    const norm = Math.hypot(w1, w2) || 1;
+    return new Set(DATA.filter(d => {
+      const z = w1 * scaledX(d) + w2 * scaledY(d) + b;
+      return pm1(d) * z < 1 + 1e-6 * norm;
+    }).map(d => d.id));
+  };
 
-  // --- Chart: scatter + decision regions (live SGD) + boundary lines (SGD vs LDA) ---
+  // --- Chart: scatter + decision regions + boundary/margin lines (SVM vs LDA) ---
   const PLOT = { left: 52, bottom: 300, width: 360, height: 240, top: 56 };
 
   function boundarySegment(w1, w2, b) {
@@ -250,7 +252,7 @@
     return [[uniq[0][0] * 100, uniq[0][1] * 100], [uniq[1][0] * 100, uniq[1][1] * 100]];
   }
 
-  function renderChart(sample, steps) {
+  function renderChart(sample, steps, svIds) {
     const svg = $("#chart");
     const { left, bottom, width, height, top } = PLOT;
     const px = v => left + (v / 100) * width, py = v => bottom - (v / 100) * height;
@@ -283,14 +285,20 @@
     const currentId = sample.id;
     const dots = DATA.map(d => {
       const isCurrent = d.id === currentId;
-      return `<circle class="point${isCurrent ? " point-current" : ""}" cx="${px(d.cloud)}" cy="${py(d.humidity)}" r="${isCurrent ? 9 : 7}" fill="${CLASS_COLOR[d.y]}" stroke="${isCurrent ? "#17212b" : "#fff"}" stroke-width="${isCurrent ? 3.4 : 2}"><title>${CLASS_LABEL[d.y]} · cloud ${d.cloud}%, humidity ${d.humidity}%</title></circle>`;
+      const isSV = svIds.has(d.id);
+      const ring = isSV ? `<circle class="sv-ring" cx="${px(d.cloud)}" cy="${py(d.humidity)}" r="12"/>` : "";
+      return `${ring}<circle class="point${isCurrent ? " point-current" : ""}" cx="${px(d.cloud)}" cy="${py(d.humidity)}" r="${isCurrent ? 9 : 7}" fill="${CLASS_COLOR[d.y]}" stroke="${isCurrent ? "#17212b" : "#fff"}" stroke-width="${isCurrent ? 3.4 : 2}"><title>${CLASS_LABEL[d.y]} · cloud ${d.cloud}%, humidity ${d.humidity}%${isSV ? " · support vector" : ""}</title></circle>`;
     }).join("");
 
     let lines = "";
     const ldaSeg = boundarySegment(LDA.w[0], LDA.w[1], LDA.b);
     if (ldaSeg) lines += `<line class="boundary-line boundary-lda" x1="${px(ldaSeg[0][0])}" y1="${py(ldaSeg[0][1])}" x2="${px(ldaSeg[1][0])}" y2="${py(ldaSeg[1][1])}"/>`;
-    const sgdSeg = boundarySegment(state.w1, state.w2, state.b);
-    if (sgdSeg) lines += `<line class="boundary-line boundary-sgd" x1="${px(sgdSeg[0][0])}" y1="${py(sgdSeg[0][1])}" x2="${px(sgdSeg[1][0])}" y2="${py(sgdSeg[1][1])}"/>`;
+    const marginLo = boundarySegment(state.w1, state.w2, state.b - 1);
+    const marginHi = boundarySegment(state.w1, state.w2, state.b + 1);
+    if (marginLo) lines += `<line class="boundary-line boundary-margin" x1="${px(marginLo[0][0])}" y1="${py(marginLo[0][1])}" x2="${px(marginLo[1][0])}" y2="${py(marginLo[1][1])}"/>`;
+    if (marginHi) lines += `<line class="boundary-line boundary-margin" x1="${px(marginHi[0][0])}" y1="${py(marginHi[0][1])}" x2="${px(marginHi[1][0])}" y2="${py(marginHi[1][1])}"/>`;
+    const svmSeg = boundarySegment(state.w1, state.w2, state.b);
+    if (svmSeg) lines += `<line class="boundary-line boundary-svm" x1="${px(svmSeg[0][0])}" y1="${py(svmSeg[0][1])}" x2="${px(svmSeg[1][0])}" y2="${py(svmSeg[1][1])}"/>`;
 
     const callout = renderCallout(sample, steps, px(sample.cloud), py(sample.humidity), left, top, width);
 
@@ -300,11 +308,9 @@
   function escapeXml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   const truncate = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
-  // A fixed strip above the plot, so the callout never sits on top of the scatter data —
-  // only a thin leader line reaches down to the point it's describing.
   function renderCallout(sample, steps, px, py, left, top, width) {
     const lineTexts = state.stepInSample === 0
-      ? [`x₁=${sample.cloud}%, x₂=${sample.humidity}%, y=${sample.y} → ${CLASS_LABEL[sample.y]}`]
+      ? [`x₁=${sample.cloud}%, x₂=${sample.humidity}%, y=${pm1(sample)} → ${CLASS_LABEL[sample.y]}`]
       : (() => {
           const r = steps[state.stepInSample - 1];
           return [`${r.label} = ${truncate(r.calc, 32)} = ${r.result}`];
@@ -315,7 +321,6 @@
     return `<g class="callout-group"><rect class="callout-box" x="${left}" y="${ribbonY}" width="${width}" height="${ribbonHeight}" rx="7"/>${textLines}<line class="callout-leader" x1="${px}" y1="${dockY}" x2="${px}" y2="${py - 11}"/><circle class="callout-dot" cx="${px}" cy="${dockY}" r="2.6"/></g>`;
   }
 
-  // --- Error vs. epoch: recomputed once per completed epoch, against LDA's fixed error rate ---
   function pickEpochTicks(maxEpoch) {
     if (maxEpoch <= 6) return Array.from({ length: maxEpoch + 1 }, (_, i) => i);
     const step = Math.ceil(maxEpoch / 4);
@@ -325,7 +330,6 @@
     return ticks;
   }
 
-  // Compact — meant to sit beside the scatter chart, not compete with it for space.
   function renderErrorChart() {
     const svg = $("#error-chart");
     const left = 30, right = 250, top = 6, bottom = 140, width = right - left, height = bottom - top;
@@ -356,17 +360,14 @@
     $("#error-lda").textContent = `${(LDA_ERROR * 100).toFixed(1)}%`;
   }
 
-  // --- Panels ---
   function renderControls() {
-    $$(".mode-button").forEach(btn => btn.classList.toggle("active", btn.dataset.activation === state.activation));
     $$(".dataset-button").forEach(btn => btn.classList.toggle("active", btn.dataset.key === state.datasetKey));
-    $("#lr-value").textContent = state.lr.toFixed(2);
+    $("#lambda-value").textContent = state.lambda.toFixed(2);
     const autoNote = state.autoStopReason ? ` · auto-paused (${state.autoStopReason})` : "";
-    $("#status-text").textContent = `${DATASETS[state.datasetKey].label} · Epoch ${state.epoch} · Sample ${state.idx + 1} / ${DATA.length} · Step ${state.stepInSample} / 9${autoNote}`;
+    $("#status-text").textContent = `${DATASETS[state.datasetKey].label} · Epoch ${state.epoch} · Sample ${state.idx + 1} / ${DATA.length} · Step ${state.stepInSample} / 8${autoNote}`;
     $("#play-pause").textContent = state.playing ? "⏸ Pause" : "▶ Auto-train";
   }
 
-  // --- Dataset picker: small static preview scatter per dataset, built once ---
   const PREVIEW_PLOT = { size: 100, pad: 6 };
   function previewSvg(rows) {
     const { size, pad } = PREVIEW_PLOT;
@@ -382,16 +383,16 @@
     $$(".dataset-button").forEach(btn => btn.addEventListener("click", () => setDataset(btn.dataset.key)));
   }
 
-  function renderComputation(sample, steps) {
+  function renderComputation(sample, steps, svIds) {
     $("#sample-x").textContent = `cloud ${sample.cloud}%, humidity ${sample.humidity}%`;
-    $("#sample-y").textContent = `actual: ${CLASS_LABEL[sample.y]}`;
+    $("#sample-y").textContent = `actual: ${CLASS_LABEL[sample.y]} (y=${pm1(sample)})`;
     if (state.stepInSample === 0) {
       $("#state-step").textContent = "Step 0 · Press “Next step →” to begin";
       $("#state-equation").textContent = "—";
       ["#state-values", "#state-calculation", "#state-result", "#state-meaning"].forEach(id => { $(id).textContent = "—"; });
     } else {
       const r = steps[state.stepInSample - 1];
-      $("#state-step").textContent = `Step ${state.stepInSample} / 9 · ${r.label}`;
+      $("#state-step").textContent = `Step ${state.stepInSample} / 8 · ${r.label}`;
       $("#state-equation").textContent = r.eq;
       $("#state-values").textContent = r.values;
       $("#state-calculation").textContent = r.calc;
@@ -399,34 +400,39 @@
       $("#state-meaning").textContent = r.meaning;
     }
     $("#weights-readout").textContent = `w₁=${state.w1.toFixed(3)} · w₂=${state.w2.toFixed(3)} · b=${state.b.toFixed(3)}`;
-    $("#sgd-accuracy").textContent = `${(currentTrainAccuracy() * 100).toFixed(1)}%`;
+    $("#svm-accuracy").textContent = `${(currentTrainAccuracy() * 100).toFixed(1)}%`;
     $("#lda-accuracy").textContent = `${(LDA.acc * 100).toFixed(1)}%`;
     $("#updates-count").textContent = state.totalUpdates;
+    const norm = Math.hypot(state.w1, state.w2);
+    $("#margin-width").textContent = norm > 1e-6 ? (2 / norm).toFixed(3) : "—";
+    $("#sv-count").textContent = `${svIds.size} / ${DATA.length}`;
   }
 
   function renderTrace() {
-    const rows = state.history.map((h, i) => `<tr class="${i === 0 ? "active-row" : ""} revealed"><td>${h.n}</td><td>${h.sample.cloud}%, ${h.sample.humidity}%</td><td>${h.sample.y}</td><td>${h.z.toFixed(3)}</td><td>${h.a.toFixed(3)}</td><td>${h.e.toFixed(3)}</td><td>${h.w1.toFixed(3)}, ${h.w2.toFixed(3)}, ${h.b.toFixed(3)}</td></tr>`).join("");
+    const rows = state.history.map((h, i) => `<tr class="${i === 0 ? "active-row" : ""} revealed"><td>${h.n}</td><td>${h.sample.cloud}%, ${h.sample.humidity}%</td><td>${pm1(h.sample)}</td><td>${h.z.toFixed(3)}</td><td>${h.m.toFixed(3)}</td><td>${h.viol ? "SV" : "—"}</td><td>${h.w1.toFixed(3)}, ${h.w2.toFixed(3)}, ${h.b.toFixed(3)}</td></tr>`).join("");
     $("#trace-body").innerHTML = rows || `<tr><td colspan="7" class="round-empty">No updates yet — press “Next step →” or “Finish sample”.</td></tr>`;
   }
 
   function render() {
     const sample = currentSample();
-    const steps = computeSteps(state.w1, state.w2, state.b, sample, state.activation, state.lr);
+    const steps = computeSteps(state.w1, state.w2, state.b, sample, state.lambda);
+    const svIds = supportVectorIds();
     renderControls();
-    renderComputation(sample, steps);
-    renderChart(sample, steps);
+    renderComputation(sample, steps, svIds);
+    renderChart(sample, steps, svIds);
     renderErrorChart();
     renderTrace();
   }
 
   // --- Events ---
-  $$(".mode-button").forEach(btn => btn.addEventListener("click", () => {
-    if (btn.dataset.activation === state.activation) return;
+  // Dragging λ re-trains from scratch at the new value so the margin visibly
+  // moves live, instead of only affecting steps taken after the drag.
+  $("#lambda-slider").addEventListener("input", e => {
     if (playTimer) { clearInterval(playTimer); playTimer = null; }
-    state = freshState(state.datasetKey, btn.dataset.activation, state.lr);
+    state = freshState(state.datasetKey, Number(e.target.value));
+    trainEpochsSilently(PRETRAIN_EPOCHS);
     render();
-  }));
-  $("#lr-slider").addEventListener("input", e => { state.lr = Number(e.target.value); render(); });
+  });
   $("#next-step").addEventListener("click", nextStep);
   $("#finish-sample").addEventListener("click", finishSample);
   $("#run-epoch").addEventListener("click", () => {
@@ -438,5 +444,6 @@
   $("#reset-btn").addEventListener("click", resetTraining);
 
   initDatasetPicker();
+  trainEpochsSilently(PRETRAIN_EPOCHS);
   render();
 })();

@@ -96,13 +96,56 @@ function bestSplit(rows, features) {
   return best;
 }
 
-function grow(rows, depth, maxDepth) {
+function splitTrace(rows, features) {
+  const traces = {};
+  features.forEach(feature => {
+    const values = [...new Set(rows.map(row => row[feature]))].sort((a, b) => a - b);
+    const points = [];
+    for (let index = 0; index < values.length - 1; index++) {
+      const threshold = (values[index] + values[index + 1]) / 2;
+      const left = rows.filter(row => row[feature] <= threshold);
+      const right = rows.filter(row => row[feature] > threshold);
+      if (!left.length || !right.length) continue;
+      const score = (left.length * gini(left) + right.length * gini(right)) / rows.length;
+      points.push({ threshold, score });
+    }
+    traces[feature] = points;
+  });
+  return traces;
+}
+
+function accuracyOf(tree, rows) {
+  return rows.filter(row => predict(tree, row) === row.label).length / rows.length;
+}
+
+// Refit with every row held out once — the standard way to estimate
+// generalization on a dataset too small for a real train/test split.
+function looAccuracyAtDepth(rows, depth) {
+  let correct = 0;
+  rows.forEach(holdout => {
+    const trainRows = rows.filter(row => row.id !== holdout.id);
+    const tree = grow(trainRows, 0, depth, ["x", "y"]);
+    if (predict(tree, holdout) === holdout.label) correct += 1;
+  });
+  return correct / rows.length;
+}
+
+const DEPTH_CURVE_MAX = 6;
+function computeDepthCurve(rows) {
+  return Array.from({ length: DEPTH_CURVE_MAX }, (_, i) => {
+    const depth = i + 1;
+    const tree = grow(rows, 0, depth, ["x", "y"]);
+    return { depth, trainAcc: accuracyOf(tree, rows), looAcc: looAccuracyAtDepth(rows, depth) };
+  });
+}
+
+function grow(rows, depth, maxDepth, forceCandidates) {
   const label = majority(rows);
   if (depth >= maxDepth || gini(rows) === 0 || rows.length < 2) return { label, count: rows.length };
-  const candidates = mode === "forest" ? [random() < 0.5 ? "x" : "y"] : ["x", "y"];
+  const candidates = forceCandidates || (mode === "forest" ? [random() < 0.5 ? "x" : "y"] : ["x", "y"]);
   const split = bestSplit(rows, candidates);
   if (!split) return { label, count: rows.length };
-  return { ...split, candidates, label, count: rows.length, leftNode: grow(split.left, depth + 1, maxDepth), rightNode: grow(split.right, depth + 1, maxDepth) };
+  return { ...split, candidates, label, count: rows.length, leftNode: grow(split.left, depth + 1, maxDepth, forceCandidates), rightNode: grow(split.right, depth + 1, maxDepth, forceCandidates) };
 }
 
 function predict(tree, point) {
@@ -152,6 +195,11 @@ function growForest(action = "Forest ready") {
   $("#takeaway-copy").textContent = MODE_INFO[mode].takeaway;
   $("#model-difference").innerHTML = `<span><b>Bootstrap rows</b>${MODE_INFO[mode].bootstrap}</span><span><b>Random feature selection</b>${MODE_INFO[mode].features}</span>`;
   document.querySelectorAll(".mode-button").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
+  $("#cart-section").style.display = mode === "tree" ? "" : "none";
+  if (mode === "tree") {
+    renderSplitChart(maxDepth);
+    renderDepthChart(maxDepth);
+  }
   render();
 }
 
@@ -299,6 +347,60 @@ function treePlot(tree, selected, number, prediction) {
   const correct = selected.isTest ? null : prediction === selected.label;
   const selectedRing = `<circle class="tree-selected ${correct === null ? "test" : correct ? "correct" : "incorrect"}" cx="${px(selected.x)}" cy="${py(selected.y)}" r="6"><title>${correct === null ? "Test-data" : correct ? "Correct" : "Incorrect"} prediction: ${classLabel(prediction)}</title></circle>`;
   return `<svg class="tree-plot" viewBox="0 0 210 170" role="img" aria-label="Decision boundaries for tree ${number}; blue is the root split and teal is a later split"><rect x="${left}" y="${py(maxY)}" width="${width}" height="${height}" class="tree-plot-bg"/>${regionMarkup.join("")}<line class="tree-axis" x1="${left}" y1="${bottom}" x2="${left + width}" y2="${bottom}"/><line class="tree-axis" x1="${left}" y1="${bottom}" x2="${left}" y2="${py(maxY)}"/>${splitMarkup.join("")}${points}${selectedRing}<text class="tree-axis-label" x="88" y="166">${activeScenario.xShort}</text><text class="tree-axis-label" x="10" y="95" transform="rotate(-90 10 95)">${activeScenario.yShort}</text></svg>`;
+}
+
+function renderSplitChart(maxDepth) {
+  const traces = splitTrace(DATA, ["x", "y"]);
+  const winner = bestSplit(DATA, ["x", "y"]);
+  const svg = $("#split-chart");
+  const left = 46, right = 450, top = 14, bottom = 150, width = right - left, height = bottom - top;
+  const allThresholds = [...traces.x, ...traces.y].map(p => p.threshold);
+  const allScores = [...traces.x, ...traces.y].map(p => p.score);
+  const minT = Math.min(...allThresholds), maxT = Math.max(...allThresholds);
+  const maxScore = Math.max(0.05, ...allScores);
+  const px = t => left + ((t - minT) / (maxT - minT)) * width;
+  const py = s => bottom - (s / maxScore) * height;
+
+  const lineFor = points => points.map((p, i) => `${i ? "L" : "M"}${px(p.threshold).toFixed(1)},${py(p.score).toFixed(1)}`).join(" ");
+  const gridLines = [0, 0.25, 0.5].map(f => {
+    const v = f * maxScore;
+    return `<line class="plot-grid" x1="${left}" y1="${py(v).toFixed(1)}" x2="${right}" y2="${py(v).toFixed(1)}"/><text class="axis-label split-y-tick" x="${left - 6}" y="${(py(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(2)}</text>`;
+  }).join("");
+  const axes = `<line class="plot-axis" x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}"/><line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left}" y2="${top}"/><text class="axis-label" x="${(left + right) / 2}" y="${bottom + 30}" text-anchor="middle">candidate threshold</text><text class="axis-label" x="14" y="${(top + bottom) / 2}" transform="rotate(-90 14 ${(top + bottom) / 2})">weighted Gini</text>`;
+
+  const winMark = winner ? `<circle class="split-winner-dot" cx="${px(winner.threshold).toFixed(1)}" cy="${py(winner.score).toFixed(1)}" r="5.5"/>` : "";
+
+  svg.innerHTML = `${gridLines}${axes}<path d="${lineFor(traces.x)}" class="split-line split-x"/><path d="${lineFor(traces.y)}" class="split-line split-y"/>${winMark}`;
+
+  $("#split-x-label").textContent = activeScenario.xShort;
+  $("#split-y-label").textContent = activeScenario.yShort;
+  $("#split-readout").textContent = winner
+    ? `Chosen: ${featureLabel(winner.feature)} ≤ ${winner.threshold.toFixed(1)} — lowest weighted Gini (${winner.score.toFixed(3)}) of every candidate on either feature.`
+    : "This dataset has no valid split left at the root.";
+}
+
+function renderDepthChart(maxDepth) {
+  const curve = computeDepthCurve(DATA);
+  const svg = $("#depth-chart");
+  const left = 34, right = 290, top = 14, bottom = 150, width = right - left, height = bottom - top;
+  const px = d => left + ((d - 1) / (DEPTH_CURVE_MAX - 1)) * width;
+  const py = acc => bottom - acc * height;
+
+  const trainPath = curve.map((p, i) => `${i ? "L" : "M"}${px(p.depth).toFixed(1)},${py(p.trainAcc).toFixed(1)}`).join(" ");
+  const looPath = curve.map((p, i) => `${i ? "L" : "M"}${px(p.depth).toFixed(1)},${py(p.looAcc).toFixed(1)}`).join(" ");
+  const gridLines = [0, 0.5, 1].map(v => `<line class="plot-grid" x1="${left}" y1="${py(v).toFixed(1)}" x2="${right}" y2="${py(v).toFixed(1)}"/><text class="axis-label split-y-tick" x="${left - 6}" y="${(py(v) + 3).toFixed(1)}" text-anchor="end">${(v * 100).toFixed(0)}%</text>`).join("");
+  const xTicks = curve.map(p => `<text class="axis-label" x="${px(p.depth).toFixed(1)}" y="${bottom + 14}" text-anchor="middle">${p.depth}</text>`).join("");
+  const axes = `<line class="plot-axis" x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}"/><line class="plot-axis" x1="${left}" y1="${bottom}" x2="${left}" y2="${top}"/><text class="axis-label" x="${(left + right) / 2}" y="${bottom + 27}" text-anchor="middle">max depth</text>`;
+
+  const current = curve[Math.min(maxDepth, DEPTH_CURVE_MAX) - 1];
+  const currentMarker = current ? `<line class="depth-current-line" x1="${px(current.depth).toFixed(1)}" y1="${top}" x2="${px(current.depth).toFixed(1)}" y2="${bottom}"/>` : "";
+
+  svg.innerHTML = `${gridLines}${axes}${xTicks}${currentMarker}<path d="${trainPath}" class="split-line depth-train"/><path d="${looPath}" class="split-line depth-loo"/>`;
+
+  if (current) {
+    $("#depth-train-current").textContent = `${(current.trainAcc * 100).toFixed(0)}%`;
+    $("#depth-loo-current").textContent = `${(current.looAcc * 100).toFixed(0)}%`;
+  }
 }
 
 function render() {

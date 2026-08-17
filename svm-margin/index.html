@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive soft-margin SVM demo: step through the exact arithmetic of training a maximum-margin linear classifier on the same rain data as SGD vs. LDA, and watch the margin widen or narrow as λ changes.">
+  <title>Maximum Margin: Training a Linear SVM</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-7">
+  <link rel="stylesheet" href="styles.css?v=20260817-1">
+</head>
+<body data-index-href="../" data-page-label="SVM Margin">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Chapter 5 · Learning Decision Boundaries</p><h1>Maximum margin: training a linear SVM one point at a time</h1><p class="lede">Same 2 features, same rain days as <a href="../sgd-vs-lda/">SGD vs. LDA</a> — cloud cover and humidity. This time the classifier doesn't just want to land on the correct side of the boundary; it wants a wide, empty buffer around it. Only the points inside that buffer — the <strong>support vectors</strong> — ever push the boundary. Step through the arithmetic and watch which points are outlined.</p></div><aside class="formula"><span>The shared update rule, with a margin</span><strong>w ← w + η(𝟙[yz&lt;1]·y·x − λw)</strong><small>only points with margin &lt; 1 ("support vectors") pull on w — everything else just shrinks</small></aside></header>
+
+    <section class="card dataset-card" aria-label="Choose a dataset">
+      <div class="card-heading"><div><h2>Dataset</h2><p>The exact same three rain-day sets as SGD vs. LDA — pick a shape and watch the margin and support vectors change.</p></div></div>
+      <div id="dataset-picker" class="dataset-picker"></div>
+    </section>
+
+    <section class="toolbar card" aria-label="Configure">
+      <span class="control-step">Configure</span>
+      <div class="param-row"><label for="lambda-slider">Margin softness λ</label><input id="lambda-slider" type="range" min="0.02" max="0.3" step="0.02" value="0.02"><span id="lambda-value" class="param-value">0.02</span></div>
+      <p class="param-hint">Smaller λ → narrower margin, hugs the training points closely. Larger λ → wider margin, more tolerant of violations. Picking a dataset or dragging λ retrains from scratch so the margin updates live — press <strong>Reset</strong> to rewind to w=0 and walk the arithmetic step by step instead.</p>
+    </section>
+
+    <section class="controls-bar card" aria-label="Training controls">
+      <span id="status-text" class="status-text">Epoch 1 · Sample 1 / 24 · Step 0 / 8</span>
+      <div class="controls">
+        <button id="reset-btn" type="button" class="secondary">Reset</button>
+        <span class="epoch-run-group"><label for="epoch-count">Run</label><input id="epoch-count" type="number" min="1" max="200" value="5"><button id="run-epoch" type="button" class="secondary">epochs →</button></span>
+        <button id="speed-toggle" type="button" class="secondary" title="Auto-train speed">1×</button>
+        <button id="play-pause" type="button" class="secondary">▶ Auto-train</button>
+        <button id="finish-sample" type="button" class="secondary">Finish sample</button>
+        <button id="next-step" type="button">Next step →</button>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <article class="card chart-card"><div class="card-heading"><div><h2>Training data, margin, and support vectors</h2><p>The solid line is the SVM boundary; the two thin dashed lines flanking it are the margin (z = ±1). Outlined points are support vectors — the only points with any pull on the current weights.</p></div><span class="tag tag-teal">2 features · 2 classes</span></div>
+        <div class="chart-row">
+          <div class="scatter-wrap"><svg id="chart" class="chart" viewBox="0 0 470 360" role="img" aria-label="Rain days plotted by cloud cover and humidity, with the SVM decision boundary, margin lines, and support vectors outlined"></svg><div class="legend"><span><i class="dot" style="background:#148a88"></i>Rain</span><span><i class="dot" style="background:#d58b16"></i>No rain</span><span><i class="line-swatch boundary-svm"></i>SVM boundary</span><span><i class="line-swatch boundary-margin"></i>Margin (z=±1)</span><span><i class="line-swatch boundary-lda"></i>LDA (closed-form)</span></div></div>
+          <div class="error-wrap"><h3>Error vs. epoch</h3><svg id="error-chart" class="error-chart" viewBox="0 0 260 200" role="img" aria-label="Training error rate versus epoch, compared against LDA's fixed error rate"></svg><div class="legend legend-compact"><span><i class="line-swatch boundary-svm"></i>SVM: <b id="error-current">—</b></span><span><i class="line-swatch boundary-lda"></i>LDA: <b id="error-lda">—</b></span></div>
+            <div class="metric-row metric-row-svm"><div><span>Margin width 2/‖w‖</span><strong id="margin-width">—</strong></div><div><span>Support vectors</span><strong id="sv-count">—</strong></div></div>
+          </div>
+        </div>
+      </article>
+
+      <aside class="card story-card"><p class="overline">Current computation</p><h2 id="state-step">Step 0 · Press “Next step →” to begin</h2><div class="sample-context"><span id="sample-x" class="sample-value">—</span><span class="arrow">→</span><span id="sample-y" class="target-value">—</span></div>
+        <div class="state-box"><div class="state-kicker">Equation for this step</div><div id="state-equation" class="state-equation">—</div><dl><dt>Values used</dt><dd id="state-values">—</dd><dt>Substitute</dt><dd id="state-calculation">—</dd><dt>Result</dt><dd id="state-result">—</dd></dl><div class="state-meaning"><span>Meaning</span><strong id="state-meaning">—</strong></div></div>
+        <div class="metric-row"><div><span>SVM train accuracy</span><strong id="svm-accuracy">—</strong></div><div><span>LDA train accuracy</span><strong id="lda-accuracy">—</strong></div></div>
+        <p class="stage-note">Weights: <span id="weights-readout">—</span> · Updates applied: <span id="updates-count">0</span></p>
+      </aside>
+    </section>
+
+    <section class="card trace-card"><div class="card-heading"><div><h2>Calculation trace</h2><p>Most recent completed update first — z, margin, and whether the point was a support vector (SV) this round.</p></div></div><div class="table-scroll"><table><thead><tr><th>#</th><th>cloud, humidity</th><th>y</th><th>z</th><th>margin</th><th>SV?</th><th>w₁, w₂, b (after)</th></tr></thead><tbody id="trace-body"></tbody></table></div></section>
+
+    <section class="note"><strong>Same shrink-and-nudge structure as gradient descent, with a margin instead of a residual.</strong> Every update shrinks <code>w</code> a little toward zero (the <code>λw</code> term — this is what widens the margin), and only the points that are inside the margin or misclassified (<code>margin = y·z &lt; 1</code>) also get to pull the boundary toward them. That's why most points end each round with no visible effect: once a point is safely past the margin, it stops mattering, no matter how far past it is. Raise λ and watch the margin widen and the support-vector count shrink to just the closest few points on each side; lower it toward 0 and the boundary chases every training point, margin included, the way <a href="../sgd-vs-lda/">SGD's perceptron</a> does. LDA's dashed line is the same fixed closed-form reference used across Chapter 5 — see <a href="../bayes-fish-demo/">Salmon or Seabass</a> for its probabilistic derivation.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-1"></script>
+</body>
+</html>
