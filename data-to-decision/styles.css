@@ -1,0 +1,69 @@
+.app-shell{max-width:1180px;margin:auto;padding:34px 28px 46px}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:30px;align-items:end;margin:20px 0 24px}
+.eyebrow,.overline{margin:0 0 8px;color:var(--teal);font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.intro h1{max-width:790px;margin:0;font-size:clamp(1.8rem,4vw,3.2rem);line-height:1.05;letter-spacing:-.04em}
+.lede{max-width:740px;margin:15px 0 0;color:var(--muted);font-size:1rem}
+.formula{padding:16px 18px;border:1px solid #c8d9f1;border-radius:16px;background:#edf4ff;box-shadow:var(--shadow)}
+.formula span,.formula small{display:block;color:var(--muted);font-size:.72rem;font-weight:750}
+.formula strong{display:block;margin:6px 0;font-size:1.08rem;color:var(--blue)}
+
+.card{padding:23px;border:1px solid var(--line);border-radius:20px;background:var(--card);box-shadow:var(--shadow)}
+
+.stepper{display:flex;align-items:center;max-width:760px;margin:0 auto 30px}
+.step{display:grid;place-items:center;gap:4px;width:92px;padding:0;border:0;background:transparent;color:var(--muted);cursor:pointer;font-weight:800;font-size:.74rem}
+.step b{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:#fff}
+.step.active{color:var(--blue)}
+.step.active b,.step.done b{border-color:var(--blue);background:var(--blue);color:#fff}
+.step-line{height:2px;flex:1;background:var(--line)}
+
+.main-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(330px,.82fr);gap:20px}
+.card-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.card h2{margin:0;font-size:1.2rem}
+.card-heading p{margin:6px 0 0;color:var(--muted);font-size:.85rem}
+.tag{display:inline-flex;white-space:nowrap;border-radius:999px;padding:4px 9px;font-size:.69rem;font-weight:800;letter-spacing:.03em}
+.tag-teal{background:#e3f5f3;color:#137674}
+
+.table-scroll{max-height:560px;overflow-y:auto;overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:12px}
+#data-table{width:100%;border-collapse:collapse;font-size:.78rem}
+#data-table th{position:sticky;top:0;background:#f3f6f7;color:#53636e;text-align:left;padding:8px 10px;font-size:.68rem;letter-spacing:.03em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+#data-table td{padding:7px 10px;border-bottom:1px solid #eef1f2}
+#data-table tr.row-correct td{background:#f2faf8}
+#data-table tr.row-wrong td{background:#fdf2f1}
+#data-table td.mark{font-weight:900;text-align:center}
+#data-table tr.row-correct td.mark{color:var(--teal)}
+#data-table tr.row-wrong td.mark{color:#c5504e}
+
+.story-card{display:flex;flex-direction:column}
+.story-card h2{font-size:1.4rem;line-height:1.15;margin:4px 0 10px}
+.story-card>p:not(.overline){margin:0 0 14px;color:var(--muted);font-size:.86rem}
+.metric-row{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:14px}
+.metric-row div{padding:10px;border-radius:11px;background:#f3f6f7}
+.metric-row span{display:block;color:var(--muted);font-size:.68rem;font-weight:750}
+.metric-row strong{font-size:1.2rem;color:var(--teal)}
+.accuracy-bars{display:block;width:100%;height:auto}
+.plot-grid{stroke:#e2e8ea;stroke-width:1}
+.axis-label{fill:#64747e;font-size:10px;font-weight:800}
+.acc-bar{fill:#c7d6de}
+.acc-bar-active{fill:var(--teal)}
+.stage-note{margin:10px 0 0;color:var(--muted);font-size:.78rem;font-weight:650}
+.controls{display:flex;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px}
+.controls button{border:0;border-radius:10px;padding:10px 13px;background:var(--blue);color:#fff;cursor:pointer;font-size:.82rem;font-weight:850}
+.controls button.secondary{background:#edf1f3;color:var(--ink)}
+.controls button:disabled{opacity:.46;cursor:default}
+
+.note{margin-top:18px;padding:15px 18px;border-left:4px solid var(--amber);border-radius:8px;background:#fff7e8;color:#66532d;font-size:.84rem}
+.note a{color:#8a6a1f;font-weight:800}
+
+@media(max-width:820px){
+  .intro,.main-grid{grid-template-columns:1fr}
+  .formula{max-width:400px}
+  .table-scroll{max-height:400px}
+}
+@media(max-width:560px){
+  .app-shell{padding:25px 16px 35px}
+  .step{width:60px;font-size:.66rem}
+  .step-line{min-width:5px}
+  .card{padding:16px}
+  .card-heading{display:block}
+  .tag{display:inline-block;margin-top:10px}
+}

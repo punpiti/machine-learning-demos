@@ -12,5 +12,8 @@ Static GitHub Pages site for course-native interactive machine-learning demonstr
 - `xgboost/` — round-by-round multi-class gradient boosting lab (2 features, 2–3 classes, one tree per class per round)
 - `parzen-knn/` — Parzen window vs. k-NN classification lab with a leave-one-out accuracy curve for window/k selection
 - `bayes-fish-demo/`, `bayes-rain-demo/`, `pens-confusion-matrix-demo/`, `sampling-quantization-demo/` — ported from the sibling [`image-processing-demos`](https://github.com/punpiti/image-processing-demos) repo (Bayes classification/theorem, confusion-matrix metrics, and sampling/quantization); each is a self-contained single-file page with its own design system, not the shared `shared.css`/`shared-layout.js` chrome used elsewhere in this repo
+- `data-to-decision/` — no-formulas lab for why a decision needs data: same 48 days, evidence columns (season, cloud, humidity) revealed one at a time, accuracy climbing at each stage
+
+The homepage groups demos by chapter, following `~/OneDrive/book/machine-learning`'s `MASTER_OUTLINE.md` rather than either course's own week/session numbering.
 
 To publish with GitHub Pages, put this directory in a repository named `machine-learning-demos`, then enable Pages from the repository's default branch and root directory.

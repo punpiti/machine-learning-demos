@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive demo about why a decision needs data: watch prediction accuracy improve as evidence is added, one column at a time.">
+  <title>From Data to Decision</title>
+  <link rel="stylesheet" href="../shared.css?v=20260817-6">
+  <link rel="stylesheet" href="styles.css?v=20260817-1">
+</head>
+<body data-index-href="../" data-page-label="From Data to Decision">
+  <main class="app-shell">
+    <div data-shared-header></div>
+    <header class="intro"><div><p class="eyebrow">Chapter 1 · From Data to Decisions</p><h1>From data to decision: how much evidence do you need?</h1><p class="lede">A decision without data is a guess. Start with nothing, then add one signal at a time — season, cloud cover, humidity — for the same 48 historical days, and watch the prediction get less arbitrary at each step. No formulas here; Chapter 3's Bayes' Theorem demo shows exactly how these signals combine mathematically.</p></div><aside class="formula"><span>The pipeline</span><strong>Sensor → Pattern → Prediction → Decision</strong><small>each stage below adds one more sensor reading</small></aside></header>
+
+    <section class="stepper" aria-label="Evidence stages"><button type="button" class="step active" data-stage="0"><b>0</b><span>No data</span></button><span class="step-line"></span><button type="button" class="step" data-stage="1"><b>1</b><span>History</span></button><span class="step-line"></span><button type="button" class="step" data-stage="2"><b>2</b><span>+ Season</span></button><span class="step-line"></span><button type="button" class="step" data-stage="3"><b>3</b><span>+ Cloud</span></button><span class="step-line"></span><button type="button" class="step" data-stage="4"><b>4</b><span>+ Humidity</span></button></section>
+
+    <section class="main-grid">
+      <article class="card table-card"><div class="card-heading"><div><h2>48 past days</h2><p>Every row is a real day in the record. The check/cross column shows whether this stage's rule would have gotten that day right.</p></div><span class="tag tag-teal">48 days · 17 rainy</span></div><div class="table-scroll"><table id="data-table"></table></div></article>
+      <aside class="card story-card"><p class="overline" id="stage-kicker">Stage 0 · No data</p><h2 id="stage-title">Nothing to go on</h2><p id="stage-copy">—</p><div class="metric-row"><div><span>Correct predictions</span><strong id="accuracy-value">—</strong></div></div><svg id="accuracy-bars" class="accuracy-bars" viewBox="0 0 460 140" role="img" aria-label="Accuracy at each evidence stage"></svg><p id="stage-note" class="stage-note"></p><div class="controls"><button id="previous" type="button" class="secondary">← Previous</button><button id="next" type="button">Add more evidence →</button></div></aside>
+    </section>
+
+    <section class="note"><strong>This is a preview, not the mechanism.</strong> Real decision rules aren't picked by eyeballing a table — Chapter 3 (<a href="../bayes-rain-demo/">Will It Rain? Bayes' Theorem</a>) shows how prior belief and each piece of evidence combine mathematically into a posterior, and Chapter 4 (<a href="../parzen-knn/">Parzen Windows &amp; k-NN</a>) shows the same "how much evidence is enough" question with a tunable window instead of fixed evidence columns.</section>
+    <footer data-shared-footer></footer>
+  </main>
+  <script src="../shared-layout.js?v=20260817-1"></script>
+  <script src="app.js?v=20260817-1"></script>
+</body>
+</html>
