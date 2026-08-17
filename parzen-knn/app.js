@@ -110,6 +110,30 @@
     return tied[Math.floor(tied.length / 2)].param;
   }
 
+  function pooledStd(getValue) {
+    const values = DATA.map(getValue);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+    return Math.sqrt(variance);
+  }
+
+  function scottBinWidth(getValue, minV, maxV) {
+    const sigma = pooledStd(getValue);
+    const n = DATA.length;
+    const absoluteWidth = 3.49 * sigma * Math.pow(n, -1 / 3);
+    return Math.min(H_MAX, Math.max(H_MIN, absoluteWidth / (maxV - minV)));
+  }
+
+  function ruleOfThumbParam() {
+    const [minX, maxX] = activeScenario.xRange, [minY, maxY] = activeScenario.yRange;
+    if (mode === "parzen") {
+      const scottX = scottBinWidth(row => row.x, minX, maxX);
+      const scottY = scottBinWidth(row => row.y, minY, maxY);
+      return (scottX + scottY) / 2;
+    }
+    return Math.max(K_MIN, Math.min(K_MAX, Math.round(Math.sqrt(DATA.length))));
+  }
+
   function selectedPoint() { return testPoint || DATA[selectedId]; }
   function selectedExcludeId() { return testPoint ? null : selectedId; }
 
@@ -160,6 +184,23 @@
       bins[idx].counts[row.label] += 1;
     });
     return bins;
+  }
+
+  function likelihoodCurve(getValue, minV, maxV) {
+    const bandwidth = Math.max(1e-6, h * (maxV - minV));
+    const samples = 48;
+    const perClass = {};
+    let maxSum = 1e-9;
+    classes().forEach(cls => {
+      const pts = DATA.filter(row => row.label === cls).map(getValue);
+      perClass[cls] = Array.from({ length: samples + 1 }, (_, i) => {
+        const v = minV + (maxV - minV) * (i / samples);
+        const sum = pts.reduce((s, p) => s + Math.exp(-0.5 * ((v - p) / bandwidth) ** 2), 0);
+        if (sum > maxSum) maxSum = sum;
+        return { v, sum };
+      });
+    });
+    return { perClass, maxSum };
   }
 
   function renderChart() {
@@ -236,7 +277,21 @@
       return bars + highlight + (total === 0 ? "" : `<title>${bin.start.toFixed(1)}–${bin.end.toFixed(1)}: ${total} point${total === 1 ? "" : "s"}</title>`);
     }).join("");
 
-    const histMarkup = `<rect class="hist-bg" x="${X_HIST.left}" y="${X_HIST.top}" width="${X_HIST.width}" height="${X_HIST.height}"/><rect class="hist-bg" x="${Y_HIST.left}" y="${Y_HIST.top}" width="${Y_HIST.width}" height="${Y_HIST.height}"/>${xHistBars}${yHistBars}<text class="hist-caption" x="${X_HIST.left}" y="${X_HIST.top - 4}">1D histogram, bin width = h</text>`;
+    const xLikelihood = likelihoodCurve(row => row.x, minX, maxX);
+    const xCurveMarkup = classes().map(cls => {
+      const pts = xLikelihood.perClass[cls];
+      const path = pts.map((p, i) => `${i ? "L" : "M"}${px(p.v).toFixed(1)},${(X_HIST.top + X_HIST.height - (p.sum / xLikelihood.maxSum) * X_HIST.height).toFixed(1)}`).join(" ");
+      return `<path class="hist-likelihood" d="${path}" stroke="${classColor(cls)}"/>`;
+    }).join("");
+
+    const yLikelihood = likelihoodCurve(row => row.y, minY, maxY);
+    const yCurveMarkup = classes().map(cls => {
+      const pts = yLikelihood.perClass[cls];
+      const path = pts.map((p, i) => `${i ? "L" : "M"}${(Y_HIST.left + (p.sum / yLikelihood.maxSum) * Y_HIST.width).toFixed(1)},${py(p.v).toFixed(1)}`).join(" ");
+      return `<path class="hist-likelihood" d="${path}" stroke="${classColor(cls)}"/>`;
+    }).join("");
+
+    const histMarkup = `<rect class="hist-bg" x="${X_HIST.left}" y="${X_HIST.top}" width="${X_HIST.width}" height="${X_HIST.height}"/><rect class="hist-bg" x="${Y_HIST.left}" y="${Y_HIST.top}" width="${Y_HIST.width}" height="${Y_HIST.height}"/>${xHistBars}${yHistBars}${xCurveMarkup}${yCurveMarkup}<text class="hist-caption" x="${X_HIST.left}" y="${X_HIST.top - 4}">1D histogram + smoothed likelihood trend, bin/kernel width = h</text>`;
 
     const dots = DATA.map(row => {
       const inWindow = insideIds.has(row.id);
@@ -327,11 +382,19 @@
     const currentMarker = `<line class="loo-current-line" x1="${currentX.toFixed(1)}" y1="${top}" x2="${currentX.toFixed(1)}" y2="${bottom}"/><circle class="loo-current-dot" cx="${currentX.toFixed(1)}" cy="${py(currentAcc).toFixed(1)}" r="5"/>`;
     const bestMarker = `<circle class="loo-best-dot" cx="${px(best).toFixed(1)}" cy="${py(looAccuracyAt(best)).toFixed(1)}" r="4"/>`;
 
+    const rule = ruleOfThumbParam();
+    const ruleX = px(rule), ruleY = py(looAccuracyAt(rule));
+    const ruleMarker = `<path class="loo-rule-marker" d="M${ruleX.toFixed(1)},${(ruleY - 6).toFixed(1)} L${(ruleX + 6).toFixed(1)},${ruleY.toFixed(1)} L${ruleX.toFixed(1)},${(ruleY + 6).toFixed(1)} L${(ruleX - 6).toFixed(1)},${ruleY.toFixed(1)} Z"><title>${mode === "parzen" ? `Scott's rule: h ≈ ${rule.toFixed(2)}` : `√n rule: k ≈ ${rule}`}</title></path>`;
+
     const xTicks = mode === "parzen"
       ? [H_MIN, 0.25, 0.5, 0.75, H_MAX].map(v => `<text class="axis-label" x="${px(v)}" y="${bottom + 16}" text-anchor="middle">${v.toFixed(2)}</text>`).join("")
       : looCurve.filter((_, i) => i % 2 === 0).map(p => `<text class="axis-label" x="${px(p.param)}" y="${bottom + 16}" text-anchor="middle">${p.param}</text>`).join("");
 
-    svg.innerHTML = `${gridLines}<path d="${area}" class="loo-area"/><path d="${path}" class="loo-line"/>${bestMarker}${currentMarker}${xTicks}<text class="axis-label" x="${(left + right) / 2}" y="${bottom + 32}" text-anchor="middle">${mode === "parzen" ? "window width h (normalized)" : "k (neighbors)"}</text>`;
+    svg.innerHTML = `${gridLines}<path d="${area}" class="loo-area"/><path d="${path}" class="loo-line"/>${bestMarker}${ruleMarker}${currentMarker}${xTicks}<text class="axis-label" x="${(left + right) / 2}" y="${bottom + 32}" text-anchor="middle">${mode === "parzen" ? "window width h (normalized)" : "k (neighbors)"}</text>`;
+
+    $("#rule-of-thumb-note").textContent = mode === "parzen"
+      ? `Scott's rule (3.49·σ·n⁻¹ᐟ³, a classical bin-width heuristic) suggests h ≈ ${rule.toFixed(2)} — the diamond marker.`
+      : `The √n rule of thumb (a common k-NN heuristic) suggests k ≈ ${rule} — the diamond marker.`;
   }
 
   function updateControls() {
